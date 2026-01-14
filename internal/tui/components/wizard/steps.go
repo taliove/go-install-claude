@@ -54,6 +54,11 @@ func DefaultSteps() *Steps {
 	return NewSteps("检测", "密钥", "模型", "确认", "安装", "完成")
 }
 
+// SwitchModelSteps creates steps for the model switch wizard
+func SwitchModelSteps() *Steps {
+	return NewSteps("选择模型", "完成")
+}
+
 // SetCurrent sets the current step
 func (s *Steps) SetCurrent(index int) {
 	if index < 0 || index >= len(s.steps) {

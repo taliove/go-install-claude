@@ -1,5 +1,5 @@
 # Claude Code 一键安装脚本 (PowerShell)
-# 使用方法: iwr -useb https://raw.githubusercontent.com/anthropic/go-install-claude/main/install.ps1 | iex
+# 使用方法: iwr -useb https://raw.githubusercontent.com/taliove/go-install-claude/main/install.ps1 | iex
 #
 # 或者保存后运行:
 # .\install.ps1 -Version v1.0.0
@@ -11,7 +11,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 # 配置
-$Repo = "anthropic/go-install-claude"
+$Repo = "taliove/go-install-claude"
 $BinaryName = "claude-installer"
 $InstallDir = "$env:LOCALAPPDATA\Programs\claude-installer"
 

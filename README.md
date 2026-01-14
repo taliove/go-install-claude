@@ -1,8 +1,8 @@
 # Claude Code 一键安装工具
 
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat-square&logo=go)](https://go.dev/)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blue?style=flat-square)](https://github.com/anthropic/go-install-claude)
-[![Release](https://img.shields.io/github/v/release/anthropic/go-install-claude?style=flat-square)](https://github.com/anthropic/go-install-claude/releases/latest)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blue?style=flat-square)](https://github.com/taliove/go-install-claude)
+[![Release](https://img.shields.io/github/v/release/taliove/go-install-claude?style=flat-square)](https://github.com/taliove/go-install-claude/releases/latest)
 
 专为国内用户设计的 Claude Code 一键安装工具，预配置万界数据代理，只需输入 API Key 即可完成安装。
 
@@ -19,34 +19,38 @@
 - 🚀 **一键安装** - 自动配置 NPM 镜像、安装 Claude Code
 - 🔧 **预设万界代理** - 无需手动配置代理地址
 - 📦 **多模型支持** - 支持选择 Claude Sonnet/Opus/Haiku 系列
+- 🔄 **模型切换** - 已安装用户可随时切换模型
 - 💻 **跨平台支持** - Windows、Linux、macOS 全平台覆盖
 - 🔑 **安全配置** - API Key 自动写入 `~/.claude/settings.json`
 - 🎯 **多主题支持** - 内置 OpenCode、Catppuccin、Tokyo Night 主题
+- 📦 **UPX 压缩** - Linux/Windows 二进制文件使用 UPX 压缩，体积更小
 
 ## 📥 一键安装
 
 ### Linux / macOS
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/anthropic/go-install-claude/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/taliove/go-install-claude/main/install.sh | bash
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/anthropic/go-install-claude/main/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/taliove/go-install-claude/main/install.ps1 | iex
 ```
 
 ### 手动下载
 
-从 [Releases](https://github.com/anthropic/go-install-claude/releases/latest) 页面下载对应平台的二进制文件：
+从 [Releases](https://github.com/taliove/go-install-claude/releases/latest) 页面下载对应平台的二进制文件：
 
-| 平台 | 文件 |
-|------|------|
-| Windows x64 | `claude-installer-windows-amd64.exe` |
-| Linux x64 | `claude-installer-linux-amd64` |
-| macOS Intel | `claude-installer-darwin-amd64` |
-| macOS Apple Silicon | `claude-installer-darwin-arm64` |
+| 平台 | 文件 | 压缩 |
+|------|------|------|
+| Windows x64 | `claude-installer-windows-amd64.exe` | ✅ UPX |
+| Linux x64 | `claude-installer-linux-amd64` | ✅ UPX |
+| macOS Intel | `claude-installer-darwin-amd64` | ❌ |
+| macOS Apple Silicon | `claude-installer-darwin-arm64` | ❌ |
+
+> macOS 二进制文件未使用 UPX 压缩，因为 UPX 对 macOS/ARM64 的兼容性有限。
 
 ## 📋 前置要求
 
@@ -55,13 +59,45 @@ iwr -useb https://raw.githubusercontent.com/anthropic/go-install-claude/main/ins
 
 ## 🔧 支持的模型
 
-| 模型 | 说明 |
-|------|------|
-| `claude-sonnet-4-20250514` | 性价比之选，推荐日常使用 ⭐ |
-| `claude-sonnet-4-5-20250929` | 增强版 Sonnet，更强推理能力 |
-| `claude-haiku-4-5-20251001` | 快速响应，适合简单任务 |
-| `claude-opus-4-1-20250805` | 强大性能，适合复杂任务 |
-| `claude-opus-4-5-20251101` | 旗舰模型，最强性能 |
+| 模型 ID | 名称 | 说明 |
+|---------|------|------|
+| `claude-sonnet-4-20250514` | Claude Sonnet 4 | 性价比之选，推荐日常使用 ⭐ |
+| `claude-sonnet-4-5-20250929` | Claude Sonnet 4.5 | 增强版 Sonnet，更强推理能力 |
+| `claude-haiku-4-5-20251001` | Claude Haiku 4.5 | 快速响应，适合简单任务 |
+| `claude-opus-4-1-20250805` | Claude Opus 4.1 | 强大性能，适合复杂任务 |
+| `claude-opus-4-5-20251101` | Claude Opus 4.5 | 旗舰模型，最强性能 |
+
+## 🎮 命令行选项
+
+```bash
+# 完整安装向导（默认）
+claude-installer
+
+# 交互式切换模型（已安装用户）
+claude-installer --switch-model
+
+# 查看当前配置
+claude-installer --config
+
+# 列出所有支持的模型
+claude-installer --list-models
+
+# 显示版本信息
+claude-installer --version
+```
+
+### 模型切换
+
+已安装 Claude Code 的用户可以随时切换模型：
+
+```bash
+claude-installer --switch-model
+```
+
+这会：
+1. 读取现有的 API Key 配置
+2. 进入交互式模型选择界面
+3. 更新模型配置（保留其他设置）
 
 ## 🎨 界面预览
 
@@ -88,7 +124,7 @@ iwr -useb https://raw.githubusercontent.com/anthropic/go-install-claude/main/ins
 }
 ```
 
-## 🎮 使用方法
+## 🎯 使用方法
 
 安装完成后，在终端中运行：
 
@@ -108,7 +144,7 @@ claude
 
 ```bash
 # 克隆仓库
-git clone https://github.com/anthropic/go-install-claude.git
+git clone https://github.com/taliove/go-install-claude.git
 cd go-install-claude
 
 # 下载依赖
@@ -141,15 +177,16 @@ dist/
 
 ```bash
 # 创建版本标签
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.1.0
+git push origin v1.1.0
 ```
 
 GitHub Actions 将自动：
 1. 运行代码检查 (golangci-lint)
 2. 运行测试
 3. 构建所有平台二进制文件
-4. 创建 GitHub Release 并上传文件
+4. 使用 UPX 压缩 Linux/Windows 二进制文件
+5. 创建 GitHub Release 并上传文件
 
 ## ❓ 常见问题
 
@@ -169,7 +206,23 @@ GitHub Actions 将自动：
 
 ### Q: 如何修改配置？
 
-直接编辑 `~/.claude/settings.json` 文件即可。
+直接编辑 `~/.claude/settings.json` 文件，或使用：
+```bash
+claude-installer --switch-model
+```
+
+### Q: 如何切换模型？
+
+运行以下命令进入交互式模型选择：
+```bash
+claude-installer --switch-model
+```
+
+### Q: 如何查看当前配置？
+
+```bash
+claude-installer --config
+```
 
 ### Q: 如何切换主题？
 

@@ -1,9 +1,9 @@
 #!/bin/bash
 # Claude Code 一键安装脚本
-# 使用方法: curl -fsSL https://raw.githubusercontent.com/anthropic/go-install-claude/main/install.sh | bash
+# 使用方法: curl -fsSL https://raw.githubusercontent.com/taliove/go-install-claude/main/install.sh | bash
 #
 # 或者带参数:
-# curl -fsSL https://raw.githubusercontent.com/anthropic/go-install-claude/main/install.sh | bash -s -- --version v1.0.0
+# curl -fsSL https://raw.githubusercontent.com/taliove/go-install-claude/main/install.sh | bash -s -- --version v1.0.0
 
 set -e
 
@@ -16,7 +16,7 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 # 配置
-REPO="anthropic/go-install-claude"
+REPO="taliove/go-install-claude"
 BINARY_NAME="claude-installer"
 INSTALL_DIR="${HOME}/.local/bin"
 VERSION="${1:-latest}"

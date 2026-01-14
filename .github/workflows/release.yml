@@ -21,6 +21,11 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
+
+      - name: Install UPX
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y upx
           
       - name: Get version info
         id: version
@@ -50,6 +55,28 @@ jobs:
           
           # macOS Apple Silicon
           GOOS=darwin GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o dist/claude-installer-darwin-arm64 ./cmd/installer
+
+      - name: Compress binaries with UPX
+        run: |
+          echo "=== Original sizes ==="
+          ls -lh dist/
+          
+          echo ""
+          echo "=== Compressing with UPX ==="
+          
+          # Linux - UPX works well
+          upx --best --lzma dist/claude-installer-linux-amd64 || echo "Linux compression failed, using original"
+          
+          # Windows - UPX works well
+          upx --best --lzma dist/claude-installer-windows-amd64.exe || echo "Windows compression failed, using original"
+          
+          # macOS - Skip compression (UPX has compatibility issues with macOS binaries)
+          # Especially on Apple Silicon and with code signing
+          echo "Skipping macOS compression (UPX compatibility issues with macOS/ARM64)"
+          
+          echo ""
+          echo "=== Final sizes ==="
+          ls -lh dist/
           
       - name: Generate checksums
         run: |
@@ -64,3 +91,43 @@ jobs:
           generate_release_notes: true
           draft: false
           prerelease: false
+          body: |
+            ## Claude Code 一键安装器
+            
+            ### 支持的模型
+            - `claude-sonnet-4-20250514` - Claude Sonnet 4 (推荐)
+            - `claude-sonnet-4-5-20250929` - Claude Sonnet 4.5
+            - `claude-haiku-4-5-20251001` - Claude Haiku 4.5
+            - `claude-opus-4-1-20250805` - Claude Opus 4.1
+            - `claude-opus-4-5-20251101` - Claude Opus 4.5
+            
+            ### 安装方式
+            
+            **Linux/macOS:**
+            ```bash
+            curl -fsSL https://raw.githubusercontent.com/taliove/go-install-claude/main/install.sh | bash
+            ```
+            
+            **Windows PowerShell:**
+            ```powershell
+            iwr -useb https://raw.githubusercontent.com/taliove/go-install-claude/main/install.ps1 | iex
+            ```
+            
+            ### 命令行选项
+            
+            ```bash
+            # 完整安装向导
+            claude-installer
+            
+            # 切换模型
+            claude-installer --switch-model
+            
+            # 查看当前配置
+            claude-installer --config
+            
+            # 列出支持的模型
+            claude-installer --list-models
+            
+            # 显示版本
+            claude-installer --version
+            ```

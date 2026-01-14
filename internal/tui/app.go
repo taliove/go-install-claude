@@ -32,10 +32,22 @@ const (
 	StageInstalling
 	StageComplete
 	StageError
+	// 模型切换模式专用
+	StageSwitchModel
+	StageSwitchComplete
+)
+
+// AppMode 应用模式
+type AppMode int
+
+const (
+	ModeFullInstall AppMode = iota // 完整安装模式
+	ModeSwitchModel                // 模型切换模式
 )
 
 // Model is the main TUI model
 type Model struct {
+	mode   AppMode
 	stage  Stage
 	width  int
 	height int
@@ -50,6 +62,10 @@ type Model struct {
 	systemInfo  *detector.SystemInfo
 	installCfg  *config.InstallConfig
 	selectedIdx int
+
+	// 模型切换模式的数据
+	claudeDir    string // Claude 配置目录
+	currentModel string // 当前模型
 
 	// Installation state
 	installResult *installer.Result
@@ -74,8 +90,22 @@ type configWriteDoneMsg struct {
 	err error
 }
 
-// NewModel creates a new TUI model
+type modelUpdateDoneMsg struct {
+	err error
+}
+
+// NewModel creates a new TUI model for full installation
 func NewModel() Model {
+	return newModel(ModeFullInstall, "", "")
+}
+
+// NewSwitchModelModel creates a new TUI model for switching models only
+func NewSwitchModelModel(claudeDir string, currentModel string) Model {
+	return newModel(ModeSwitchModel, claudeDir, currentModel)
+}
+
+// newModel creates a new TUI model with the specified mode
+func newModel(mode AppMode, claudeDir string, currentModel string) Model {
 	// Initialize text input
 	ti := textinput.New()
 	ti.Placeholder = "请输入您的万界 API Key"
@@ -90,8 +120,13 @@ func NewModel() Model {
 	sp.Spinner = spinner.MiniDot
 	sp.Style = lipgloss.NewStyle().Foreground(theme.Current().Primary())
 
-	// Initialize steps
-	steps := wizard.DefaultSteps()
+	// Initialize steps based on mode
+	var steps *wizard.Steps
+	if mode == ModeSwitchModel {
+		steps = wizard.SwitchModelSteps()
+	} else {
+		steps = wizard.DefaultSteps()
+	}
 
 	// Initialize model selector
 	var selectorItems []wizard.SelectorItem
@@ -99,6 +134,10 @@ func NewModel() Model {
 		badge := ""
 		if m.Default {
 			badge = "⭐ 推荐"
+		}
+		// 标记当前选中的模型
+		if m.ID == currentModel {
+			badge = "✓ 当前"
 		}
 		selectorItems = append(selectorItems, wizard.SelectorItem{
 			ID:          m.ID,
@@ -111,13 +150,32 @@ func NewModel() Model {
 	selector.SetTitle(styles.IconPackage + " 选择模型")
 	selector.SetWidth(50)
 
+	// 设置默认选中的模型
+	if currentModel != "" {
+		for i, m := range config.SupportedModels {
+			if m.ID == currentModel {
+				selector.SetSelected(i)
+				break
+			}
+		}
+	}
+
+	// 根据模式设置初始阶段
+	initialStage := StageWelcome
+	if mode == ModeSwitchModel {
+		initialStage = StageSwitchModel
+	}
+
 	return Model{
-		stage:      StageWelcome,
-		keyInput:   ti,
-		spinner:    sp,
-		steps:      steps,
-		selector:   selector,
-		installCfg: config.NewDefaultConfig(),
+		mode:         mode,
+		stage:        initialStage,
+		keyInput:     ti,
+		spinner:      sp,
+		steps:        steps,
+		selector:     selector,
+		installCfg:   config.NewDefaultConfig(),
+		claudeDir:    claudeDir,
+		currentModel: currentModel,
 	}
 }
 
@@ -155,11 +213,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			return m.handleEnter()
 		case "up", "k":
-			if m.stage == StageSelectModel {
+			if m.stage == StageSelectModel || m.stage == StageSwitchModel {
 				m.selector.Prev()
 			}
 		case "down", "j":
-			if m.stage == StageSelectModel {
+			if m.stage == StageSelectModel || m.stage == StageSwitchModel {
 				m.selector.Next()
 			}
 		case "esc":
@@ -213,6 +271,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.steps.Fail()
 		} else {
 			return m, m.doInstall()
+		}
+
+	case modelUpdateDoneMsg:
+		if msg.err != nil {
+			m.errorMessage = "模型切换失败"
+			m.errorDetail = msg.err.Error()
+			m.stage = StageError
+			m.steps.Fail()
+		} else {
+			m.steps.Complete()
+			m.stage = StageSwitchComplete
 		}
 
 	case spinner.TickMsg:
@@ -276,6 +345,17 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 
 	case StageError:
 		return m, tea.Quit
+
+	// 模型切换模式
+	case StageSwitchModel:
+		if item := m.selector.SelectedItem(); item != nil {
+			m.installCfg.Model = item.ID
+		}
+		// 直接更新模型配置
+		return m, m.doUpdateModel()
+
+	case StageSwitchComplete:
+		return m, tea.Quit
 	}
 
 	return m, nil
@@ -306,6 +386,14 @@ func (m Model) doInstall() tea.Cmd {
 	}
 }
 
+// doUpdateModel updates only the model setting
+func (m Model) doUpdateModel() tea.Cmd {
+	return func() tea.Msg {
+		err := config.UpdateModel(m.claudeDir, m.installCfg.Model)
+		return modelUpdateDoneMsg{err: err}
+	}
+}
+
 // View renders the UI
 func (m Model) View() string {
 	var content string
@@ -327,6 +415,11 @@ func (m Model) View() string {
 		content = m.viewComplete()
 	case StageError:
 		content = m.viewError()
+	// 模型切换模式
+	case StageSwitchModel:
+		content = m.viewSwitchModel()
+	case StageSwitchComplete:
+		content = m.viewSwitchComplete()
 	}
 
 	// Add help overlay if showing
@@ -636,6 +729,80 @@ func (m Model) viewError() string {
 	// Help
 	helpStyle := lipgloss.NewStyle().Foreground(t.TextDim())
 	b.WriteString(helpStyle.Render("按 Esc 返回 • 按 q 退出"))
+
+	return b.String()
+}
+
+// viewSwitchModel renders the model switch screen
+func (m Model) viewSwitchModel() string {
+	t := theme.Current()
+	var b strings.Builder
+
+	// Steps
+	b.WriteString(m.steps.Render())
+	b.WriteString("\n\n")
+
+	// Title
+	titleStyle := lipgloss.NewStyle().Foreground(t.Primary()).Bold(true)
+	b.WriteString(titleStyle.Render(styles.IconPackage + " 切换模型"))
+	b.WriteString("\n\n")
+
+	// Current model info
+	if m.currentModel != "" {
+		dimStyle := lipgloss.NewStyle().Foreground(t.TextDim())
+		b.WriteString(dimStyle.Render(fmt.Sprintf("当前模型: %s", m.currentModel)))
+		b.WriteString("\n\n")
+	}
+
+	// Selector
+	b.WriteString(m.selector.Render())
+	b.WriteString("\n")
+
+	// Help
+	helpStyle := lipgloss.NewStyle().Foreground(t.TextDim())
+	b.WriteString(helpStyle.Render("↑/↓ 选择 • Enter 确认切换 • q 退出"))
+
+	return b.String()
+}
+
+// viewSwitchComplete renders the switch complete screen
+func (m Model) viewSwitchComplete() string {
+	t := theme.Current()
+	var b strings.Builder
+
+	// Steps
+	b.WriteString(m.steps.Render())
+	b.WriteString("\n\n")
+
+	// Success message
+	successStyle := lipgloss.NewStyle().Foreground(t.Success()).Bold(true)
+	b.WriteString(successStyle.Render(styles.IconCheck + " 模型切换成功！"))
+	b.WriteString("\n\n")
+
+	// Model info
+	modelInfo := config.GetModelByID(m.installCfg.Model)
+	modelName := m.installCfg.Model
+	modelDesc := ""
+	if modelInfo != nil {
+		modelName = modelInfo.Name
+		modelDesc = modelInfo.Description
+	}
+
+	cardContent := fmt.Sprintf(`已切换到: %s
+%s
+
+配置已更新，重新运行 claude 即可使用新模型。`, modelName, modelDesc)
+
+	cardStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(t.Success()).
+		Padding(1, 2)
+	b.WriteString(cardStyle.Render(cardContent))
+	b.WriteString("\n\n")
+
+	// Help
+	helpStyle := lipgloss.NewStyle().Foreground(t.TextDim())
+	b.WriteString(helpStyle.Render("按 Enter 或 q 退出"))
 
 	return b.String()
 }
