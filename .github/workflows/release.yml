@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          
+      - name: Get version info
+        id: version
+        run: |
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "COMMIT=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+          
+      - name: Build all platforms
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+          COMMIT: ${{ steps.version.outputs.COMMIT }}
+          BUILD_TIME: ${{ steps.version.outputs.BUILD_TIME }}
+        run: |
+          mkdir -p dist
+          
+          LDFLAGS="-s -w -X github.com/anthropic/go-install-claude/internal/version.Version=${VERSION} -X github.com/anthropic/go-install-claude/internal/version.GitCommit=${COMMIT} -X github.com/anthropic/go-install-claude/internal/version.BuildTime=${BUILD_TIME}"
+          
+          # Windows
+          GOOS=windows GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o dist/claude-installer-windows-amd64.exe ./cmd/installer
+          
+          # Linux
+          GOOS=linux GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o dist/claude-installer-linux-amd64 ./cmd/installer
+          
+          # macOS Intel
+          GOOS=darwin GOARCH=amd64 go build -ldflags="${LDFLAGS}" -o dist/claude-installer-darwin-amd64 ./cmd/installer
+          
+          # macOS Apple Silicon
+          GOOS=darwin GOARCH=arm64 go build -ldflags="${LDFLAGS}" -o dist/claude-installer-darwin-arm64 ./cmd/installer
+          
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum * > checksums.txt
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false

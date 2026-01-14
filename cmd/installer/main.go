@@ -6,13 +6,13 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/anthropic/go-install-claude/internal/ui"
+	"github.com/anthropic/go-install-claude/internal/tui"
 )
 
 func main() {
 	// 创建程序
 	p := tea.NewProgram(
-		ui.NewModel(),
+		tui.NewModel(),
 		tea.WithAltScreen(),       // 使用备用屏幕
 		tea.WithMouseCellMotion(), // 支持鼠标
 	)

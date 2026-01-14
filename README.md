@@ -2,41 +2,51 @@
 
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat-square&logo=go)](https://go.dev/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blue?style=flat-square)](https://github.com/anthropic/go-install-claude)
+[![Release](https://img.shields.io/github/v/release/anthropic/go-install-claude?style=flat-square)](https://github.com/anthropic/go-install-claude/releases/latest)
 
 专为国内用户设计的 Claude Code 一键安装工具，预配置万界数据代理，只需输入 API Key 即可完成安装。
 
-![demo](https://via.placeholder.com/800x400/1A1B26/00D4AA?text=Claude+Code+Installer+TUI)
+```
+  ╔════════════════════════════════════════════╗
+  ║  Claude Code 一键安装工具                  ║
+  ║  ⚡ 万界数据 ⚡                            ║
+  ╚════════════════════════════════════════════╝
+```
 
 ## ✨ 特性
 
-- 🎨 **精美 TUI 界面** - 模仿 OpenCode 的蓝绿色主题设计
+- 🎨 **精美 TUI 界面** - 参考 OpenCode/Claude Code 的专业视觉设计
 - 🚀 **一键安装** - 自动配置 NPM 镜像、安装 Claude Code
 - 🔧 **预设万界代理** - 无需手动配置代理地址
 - 📦 **多模型支持** - 支持选择 Claude Sonnet/Opus/Haiku 系列
 - 💻 **跨平台支持** - Windows、Linux、macOS 全平台覆盖
 - 🔑 **安全配置** - API Key 自动写入 `~/.claude/settings.json`
+- 🎯 **多主题支持** - 内置 OpenCode、Catppuccin、Tokyo Night 主题
 
-## 📥 一键下载运行
+## 📥 一键安装
+
+### Linux / macOS
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/anthropic/go-install-claude/main/install.sh | bash
+```
 
 ### Windows (PowerShell)
 
 ```powershell
-# 下载并运行安装程序
-irm https://github.com/your-repo/releases/download/v1.0.0/claude-installer-windows-amd64.exe -OutFile claude-installer.exe; .\claude-installer.exe
+iwr -useb https://raw.githubusercontent.com/anthropic/go-install-claude/main/install.ps1 | iex
 ```
 
-### Linux / macOS (Bash)
+### 手动下载
 
-```bash
-# Linux x64
-curl -fsSL https://github.com/your-repo/releases/download/v1.0.0/claude-installer-linux-amd64 -o claude-installer && chmod +x claude-installer && ./claude-installer
+从 [Releases](https://github.com/anthropic/go-install-claude/releases/latest) 页面下载对应平台的二进制文件：
 
-# macOS Intel
-curl -fsSL https://github.com/your-repo/releases/download/v1.0.0/claude-installer-darwin-amd64 -o claude-installer && chmod +x claude-installer && ./claude-installer
-
-# macOS Apple Silicon (M1/M2/M3)
-curl -fsSL https://github.com/your-repo/releases/download/v1.0.0/claude-installer-darwin-arm64 -o claude-installer && chmod +x claude-installer && ./claude-installer
-```
+| 平台 | 文件 |
+|------|------|
+| Windows x64 | `claude-installer-windows-amd64.exe` |
+| Linux x64 | `claude-installer-linux-amd64` |
+| macOS Intel | `claude-installer-darwin-amd64` |
+| macOS Apple Silicon | `claude-installer-darwin-arm64` |
 
 ## 📋 前置要求
 
@@ -53,6 +63,41 @@ curl -fsSL https://github.com/your-repo/releases/download/v1.0.0/claude-installe
 | `claude-opus-4-1-20250805` | 强大性能，适合复杂任务 |
 | `claude-opus-4-5-20251101` | 旗舰模型，最强性能 |
 
+## 🎨 界面预览
+
+安装向导包含以下步骤：
+
+1. **环境检测** - 自动检测 Node.js、npm、网络连接
+2. **输入 API Key** - 安全输入万界数据 API Key
+3. **选择模型** - 从支持的模型列表中选择
+4. **确认配置** - 预览并确认安装配置
+5. **安装** - 自动安装 Claude Code CLI
+6. **完成** - 显示安装成功信息
+
+## 📁 配置文件
+
+安装完成后，配置将写入 `~/.claude/settings.json`：
+
+```json
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://maas-openapi.wanjiedata.com/api/anthropic",
+    "ANTHROPIC_API_KEY": "your-api-key",
+    "ANTHROPIC_MODEL": "claude-sonnet-4-20250514"
+  }
+}
+```
+
+## 🎮 使用方法
+
+安装完成后，在终端中运行：
+
+```bash
+claude
+```
+
+开始使用 Claude Code 进行 AI 编程！
+
 ## 🏗️ 自行构建
 
 ### 前置条件
@@ -63,7 +108,7 @@ curl -fsSL https://github.com/your-repo/releases/download/v1.0.0/claude-installe
 
 ```bash
 # 克隆仓库
-git clone https://github.com/your-repo/go-install-claude.git
+git clone https://github.com/anthropic/go-install-claude.git
 cd go-install-claude
 
 # 下载依赖
@@ -90,29 +135,21 @@ dist/
 └── claude-installer-darwin-arm64       # macOS Apple Silicon
 ```
 
-## 📁 配置文件
+## 🔄 版本发布
 
-安装完成后，配置将写入 `~/.claude/settings.json`：
-
-```json
-{
-  "env": {
-    "ANTHROPIC_BASE_URL": "https://maas-openapi.wanjiedata.com/api/anthropic",
-    "ANTHROPIC_API_KEY": "your-api-key",
-    "ANTHROPIC_MODEL": "claude-sonnet-4-20250514"
-  }
-}
-```
-
-## 🎮 使用方法
-
-安装完成后，在终端中运行：
+项目使用 GitHub Actions 自动发布。发布新版本只需：
 
 ```bash
-claude
+# 创建版本标签
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
-开始使用 Claude Code 进行 AI 编程！
+GitHub Actions 将自动：
+1. 运行代码检查 (golangci-lint)
+2. 运行测试
+3. 构建所有平台二进制文件
+4. 创建 GitHub Release 并上传文件
 
 ## ❓ 常见问题
 
@@ -133,6 +170,32 @@ claude
 ### Q: 如何修改配置？
 
 直接编辑 `~/.claude/settings.json` 文件即可。
+
+### Q: 如何切换主题？
+
+当前版本默认使用 OpenCode 主题。后续版本将支持主题切换功能。
+
+## 📏 代码规范
+
+项目遵循 Go 最佳实践，使用以下工具确保代码质量：
+
+```bash
+# 安装开发工具
+make tools
+
+# 格式化代码
+make fmt
+
+# 代码检查
+make lint
+
+# 运行测试
+make test
+```
+
+配置文件：
+- [.golangci.yml](.golangci.yml) - 代码检查规则
+- [.editorconfig](.editorconfig) - 编辑器配置
 
 ## 📄 开源协议
 
