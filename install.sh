@@ -2,10 +2,10 @@
 # Claude Code 一键安装脚本
 #
 # 国内用户（推荐，使用加速镜像）:
-#   curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/taliove/claude-installer/main/install.sh | bash
+#   curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.sh | bash
 #
 # 海外用户（直连 GitHub）:
-#   curl -fsSL https://raw.githubusercontent.com/taliove/claude-installer/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.sh | bash
 #
 # 重新配置:
 #   curl -fsSL <url> | bash -s -- --config
@@ -503,8 +503,8 @@ show_help() {
     echo "  bash install.sh --help    显示此帮助"
     echo ""
     echo "在线安装:"
-    echo "  国内用户: curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/taliove/claude-installer/main/install.sh | bash"
-    echo "  海外用户: curl -fsSL https://raw.githubusercontent.com/taliove/claude-installer/main/install.sh | bash"
+    echo "  国内用户: curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.sh | bash"
+    echo "  海外用户: curl -fsSL https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.sh | bash"
     echo ""
     echo "环境变量:"
     echo "  USE_MIRROR=true   强制使用国内镜像加速"

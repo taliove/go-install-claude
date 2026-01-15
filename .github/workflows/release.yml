@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate scripts
+        run: |
+          bash -n install.sh
+          echo "Bash syntax OK"
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          cat << 'EOF' > release_notes.md
+          ## Claude Code 一键安装工具 ${{ steps.version.outputs.VERSION }}
+
+          ### 安装命令
+
+          **Linux / macOS (国内用户):**
+          ```bash
+          curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.sh | bash
+          ```
+
+          **Linux / macOS (海外用户):**
+          ```bash
+          curl -fsSL https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.sh | bash
+          ```
+
+          **Windows PowerShell (国内用户):**
+          ```powershell
+          iwr -useb https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.ps1 | iex
+          ```
+
+          **Windows PowerShell (海外用户):**
+          ```powershell
+          iwr -useb https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.ps1 | iex
+          ```
+
+          ### 特性
+
+          - 一键安装 Node.js、Claude Code 和配置
+          - 交互式模型选择 (Sonnet 4, Sonnet 4.5, Haiku 4.5, Opus 4.1, Opus 4.5)
+          - 中国网络加速，自动检测并使用镜像
+          - 预配置万界数据代理
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.version.outputs.VERSION }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

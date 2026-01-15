@@ -1,10 +1,10 @@
-﻿# Claude Code 一键安装脚本 (Windows PowerShell)
+# Claude Code 一键安装脚本 (Windows PowerShell)
 #
 # 国内用户（推荐，使用加速镜像）:
-#   iwr -useb https://ghproxy.net/https://raw.githubusercontent.com/taliove/claude-installer/main/install.ps1 | iex
+#   iwr -useb https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.ps1 | iex
 #
 # 海外用户（直连 GitHub）:
-#   iwr -useb https://raw.githubusercontent.com/taliove/claude-installer/main/install.ps1 | iex
+#   iwr -useb https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.ps1 | iex
 #
 # 仅重新配置:
 #   .\install.ps1 -Config

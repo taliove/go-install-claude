@@ -1,6 +1,6 @@
 # Claude Code 一键安装工具
 
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blue?style=flat-square)](https://github.com/taliove/claude-installer)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blue?style=flat-square)](https://github.com/taliove/easy-install-claude)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
 专为国内用户设计的 Claude Code 一键安装工具，预配置万界数据代理，一行命令完成所有安装配置。
@@ -29,13 +29,13 @@
 #### Linux / macOS
 
 ```bash
-curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/taliove/claude-installer/main/install.sh | bash
+curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.sh | bash
 ```
 
 #### Windows (PowerShell)
 
 ```powershell
-iwr -useb https://ghproxy.net/https://raw.githubusercontent.com/taliove/claude-installer/main/install.ps1 | iex
+iwr -useb https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.ps1 | iex
 ```
 
 ### 海外用户（直连 GitHub）
@@ -43,13 +43,13 @@ iwr -useb https://ghproxy.net/https://raw.githubusercontent.com/taliove/claude-i
 #### Linux / macOS
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/taliove/claude-installer/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.sh | bash
 ```
 
 #### Windows (PowerShell)
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/taliove/claude-installer/main/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.ps1 | iex
 ```
 
 ## 🔄 重新配置
@@ -59,14 +59,14 @@ iwr -useb https://raw.githubusercontent.com/taliove/claude-installer/main/instal
 #### Linux / macOS
 
 ```bash
-curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/taliove/claude-installer/main/install.sh | bash -s -- --config
+curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.sh | bash -s -- --config
 ```
 
 #### Windows (PowerShell)
 
 ```powershell
 # 下载后运行
-Invoke-WebRequest -Uri "https://ghproxy.net/https://raw.githubusercontent.com/taliove/claude-installer/main/install.ps1" -OutFile install.ps1; .\install.ps1 -Config
+Invoke-WebRequest -Uri "https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.ps1" -OutFile install.ps1; .\install.ps1 -Config
 ```
 
 ## 🔧 支持的模型

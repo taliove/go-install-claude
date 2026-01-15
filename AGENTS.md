@@ -17,6 +17,9 @@ One command to install everything: Node.js, Claude Code, and configuration.
 claude-installer/
 ├── install.sh              # Linux/macOS installation script
 ├── install.ps1             # Windows installation script (PowerShell)
+├── test/
+│   ├── Dockerfile          # Docker container for E2E testing
+│   └── test-e2e.sh         # E2E test script
 ├── .github/
 │   └── workflows/
 │       └── ci.yml          # Script syntax validation
@@ -27,9 +30,54 @@ claude-installer/
 └── .editorconfig
 ```
 
-## Script Commands
+## Testing
 
-### Testing Scripts Locally
+### E2E Testing (Required Before Push)
+
+**IMPORTANT**: Before every commit and push, run the full E2E test suite:
+
+```bash
+# Build the test container
+docker build -t claude-installer-test -f test/Dockerfile .
+
+# Run full E2E tests (includes nvm, Node.js, Claude Code installation)
+docker run --rm claude-installer-test bash ./test-e2e.sh
+
+# Quick syntax check only
+docker run --rm claude-installer-test
+```
+
+### E2E Test Coverage
+
+The E2E test (`test/test-e2e.sh`) validates:
+
+1. **Syntax Check**: `bash -n` and ShellCheck validation
+2. **Environment Detection**: OS detection, curl availability, --help flag
+3. **Node.js Installation**: nvm installation via China mirror, Node.js LTS
+4. **Claude Code Installation**: npm global install of @anthropic-ai/claude-code
+5. **Wanjie Proxy Configuration**: settings.json creation with correct values
+6. **Configuration Verification**: Validates ANTHROPIC_BASE_URL points to Wanjie
+7. **Claude Execution**: Verifies claude command is available
+
+### Skip Options
+
+```bash
+# Skip installation tests (faster, for config testing only)
+docker run --rm -e SKIP_INSTALL=true claude-installer-test bash ./test-e2e.sh
+```
+
+### Non-Interactive Mode
+
+The install script supports non-interactive mode for testing:
+
+```bash
+# Environment variables for non-interactive installation
+NONINTERACTIVE=true
+ANTHROPIC_API_KEY=sk-xxx
+ANTHROPIC_MODEL=claude-sonnet-4-20250514
+```
+
+### Local Syntax Validation
 
 ```bash
 # Validate Bash syntax
@@ -43,7 +91,7 @@ $null = [System.Management.Automation.Language.Parser]::ParseFile("install.ps1",
 if ($errors) { $errors | ForEach-Object { Write-Error $_ } }
 ```
 
-### Running Install Scripts
+## Running Install Scripts
 
 ```bash
 # Linux/macOS - Full install
@@ -233,16 +281,26 @@ Triggered on push/PR to main branch:
 1. **validate-bash**: Check install.sh syntax with `bash -n` and ShellCheck
 2. **validate-powershell**: Check install.ps1 syntax with PowerShell Parser
 
+## Commit and Push Protocol
+
+When the user requests "签入推送" (commit and push):
+
+1. **Run E2E tests first** (REQUIRED):
+   ```bash
+   docker build -t claude-installer-test -f test/Dockerfile .
+   docker run --rm claude-installer-test bash ./test-e2e.sh
+   ```
+
+2. **Only commit and push after ALL tests pass**
+
+3. **If tests fail**: Fix the issue first, re-run tests, then commit
+
 ### Pre-Push Checklist
 
-```bash
-# Must pass before pushing
-bash -n install.sh
-shellcheck install.sh
-
-# PowerShell (run in pwsh)
-$null = [System.Management.Automation.Language.Parser]::ParseFile("install.ps1", [ref]$null, [ref]$errors)
-```
+- [ ] E2E tests pass: `docker run --rm claude-installer-test bash ./test-e2e.sh`
+- [ ] Bash syntax OK: `bash -n install.sh`
+- [ ] ShellCheck passes (warnings OK, errors NOT OK)
+- [ ] PowerShell syntax OK (if install.ps1 changed)
 
 ## Common Tasks
 
@@ -252,6 +310,7 @@ $null = [System.Management.Automation.Language.Parser]::ParseFile("install.ps1",
 2. Update model mapping logic if needed
 3. Update AGENTS.md model table
 4. Update README.md model table
+5. Run E2E tests to verify
 
 ### Updating GitHub Mirrors
 
@@ -281,22 +340,8 @@ $GitHubMirrors = @(
 
 Update the nvm install URL in install.sh:
 ```bash
-NVM_INSTALL_URL="https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh"
+NVM_INSTALL_URL="https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh"
 ```
-
-## Commit and Push Protocol
-
-When the user requests "签入推送" (commit and push):
-
-1. **Validate scripts first**:
-   ```bash
-   bash -n install.sh
-   shellcheck install.sh  # If available
-   ```
-
-2. **Only commit and push after validation passes**
-
-3. **If validation fails**: Fix the issue first, then re-validate
 
 ## Release Process
 
