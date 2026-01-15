@@ -6,10 +6,25 @@ set -e
 
 echo "=== Test: Install Script Validation ==="
 
-# 脚本路径
+# 脚本路径 - 支持多种环境
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+# 尝试多个可能的位置查找 install.sh
+if [ -f "${HOME}/install.sh" ]; then
+    # Docker 容器环境
+    REPO_ROOT="${HOME}"
+elif [ -f "${SCRIPT_DIR}/../../../install.sh" ]; then
+    # 本地开发环境
+    REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+else
+    echo "ERROR: Cannot find install.sh"
+    echo "  Tried: ${HOME}/install.sh"
+    echo "  Tried: ${SCRIPT_DIR}/../../../install.sh"
+    exit 1
+fi
+
 INSTALL_SH="${REPO_ROOT}/install.sh"
+echo "  Found install.sh at: ${INSTALL_SH}"
 
 # 测试计数
 TESTS_RUN=0

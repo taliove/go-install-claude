@@ -30,8 +30,12 @@ RUN mkdir -p ~/.npm-global \
 COPY --chown=testuser:testuser test/e2e/run_tests.sh ./e2e/
 COPY --chown=testuser:testuser test/e2e/tests/ ./e2e/tests/
 
+# 复制安装脚本 (供测试验证)
+COPY --chown=testuser:testuser install.sh ./
+COPY --chown=testuser:testuser install.ps1 ./
+
 # 设置脚本可执行权限
-RUN chmod +x ./e2e/run_tests.sh ./e2e/tests/*.sh
+RUN chmod +x ./e2e/run_tests.sh ./e2e/tests/*.sh ./install.sh
 
 # 入口
 ENTRYPOINT ["bash", "./e2e/run_tests.sh"]
