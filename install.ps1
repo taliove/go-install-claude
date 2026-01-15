@@ -20,6 +20,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# 设置控制台输出编码为 UTF-8
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+
 # 配置
 $Repo = "taliove/go-install-claude"
 $BinaryName = "claude-installer"
@@ -36,11 +40,11 @@ $GitHubMirrors = @(
 $script:MirrorMode = $false
 $script:ActiveMirror = ""
 
-# 颜色输出函数
-function Write-Info { Write-Host "ℹ " -ForegroundColor Cyan -NoNewline; Write-Host $args[0] }
-function Write-Success { Write-Host "✓ " -ForegroundColor Green -NoNewline; Write-Host $args[0] }
-function Write-Warn { Write-Host "⚠ " -ForegroundColor Yellow -NoNewline; Write-Host $args[0] }
-function Write-Err { Write-Host "✖ " -ForegroundColor Red -NoNewline; Write-Host $args[0] }
+# 颜色输出函数 (使用 ASCII 兼容符号)
+function Write-Info { Write-Host "[i] " -ForegroundColor Cyan -NoNewline; Write-Host $args[0] }
+function Write-Success { Write-Host "[+] " -ForegroundColor Green -NoNewline; Write-Host $args[0] }
+function Write-Warn { Write-Host "[!] " -ForegroundColor Yellow -NoNewline; Write-Host $args[0] }
+function Write-Err { Write-Host "[x] " -ForegroundColor Red -NoNewline; Write-Host $args[0] }
 
 # 检测是否需要使用镜像
 function Test-MirrorNeed {
@@ -56,15 +60,15 @@ function Test-MirrorNeed {
     }
     
     # 自动检测：尝试连接 GitHub API
-    Write-Info "检测网络环境..."
+    Write-Info "Detecting network environment..."
     try {
         $null = Invoke-WebRequest -Uri "https://api.github.com" -TimeoutSec 5 -UseBasicParsing
         $script:MirrorMode = $false
-        Write-Success "可以直连 GitHub"
+        Write-Success "GitHub is accessible"
     }
     catch {
         $script:MirrorMode = $true
-        Write-Warn "无法直连 GitHub，将使用国内镜像加速"
+        Write-Warn "Cannot reach GitHub, using mirror acceleration"
     }
 }
 
@@ -74,14 +78,14 @@ function Find-WorkingMirror {
         try {
             $null = Invoke-WebRequest -Uri $mirror -TimeoutSec 5 -UseBasicParsing
             $script:ActiveMirror = $mirror
-            Write-Success "使用镜像: $mirror"
+            Write-Success "Using mirror: $mirror"
             return $true
         }
         catch {
             continue
         }
     }
-    Write-Err "所有镜像均不可用"
+    Write-Err "All mirrors unavailable"
     return $false
 }
 
@@ -112,7 +116,7 @@ function Invoke-Download {
     catch {
         # 如果使用镜像失败，尝试直连
         if ($script:MirrorMode) {
-            Write-Warn "镜像下载失败，尝试直连..."
+            Write-Warn "Mirror download failed, trying direct connection..."
             try {
                 Invoke-WebRequest -Uri $Url -OutFile $OutFile -UseBasicParsing
                 return $true
@@ -125,17 +129,17 @@ function Invoke-Download {
     }
 }
 
-# Banner
+# Banner (使用 ASCII 兼容字符)
 function Show-Banner {
     Write-Host ""
-    Write-Host "╔════════════════════════════════════════════╗" -ForegroundColor Cyan
-    Write-Host "║  " -ForegroundColor Cyan -NoNewline
-    Write-Host "Claude Code 一键安装工具" -ForegroundColor White -NoNewline
-    Write-Host "                  ║" -ForegroundColor Cyan
-    Write-Host "║  " -ForegroundColor Cyan -NoNewline
-    Write-Host "⚡ 万界数据 ⚡" -ForegroundColor Yellow -NoNewline
-    Write-Host "                            ║" -ForegroundColor Cyan
-    Write-Host "╚════════════════════════════════════════════╝" -ForegroundColor Cyan
+    Write-Host "+----------------------------------------------+" -ForegroundColor Cyan
+    Write-Host "|  " -ForegroundColor Cyan -NoNewline
+    Write-Host "Claude Code Installer" -ForegroundColor White -NoNewline
+    Write-Host "                       |" -ForegroundColor Cyan
+    Write-Host "|  " -ForegroundColor Cyan -NoNewline
+    Write-Host "Wanjie Data" -ForegroundColor Yellow -NoNewline
+    Write-Host "                                  |" -ForegroundColor Cyan
+    Write-Host "+----------------------------------------------+" -ForegroundColor Cyan
     Write-Host ""
 }
 
@@ -143,20 +147,20 @@ function Show-Banner {
 function Get-Platform {
     $arch = [System.Environment]::Is64BitOperatingSystem
     if (-not $arch) {
-        Write-Err "需要 64 位 Windows"
+        Write-Err "Requires 64-bit Windows"
         exit 1
     }
     
     $script:Platform = "windows-amd64"
     $script:Binary = "$BinaryName-$Platform.exe"
     
-    Write-Info "检测到平台: $Platform"
+    Write-Info "Detected platform: $Platform"
 }
 
 # 获取最新版本
 function Get-LatestVersion {
     if ($Version -eq "latest") {
-        Write-Info "获取最新版本信息..."
+        Write-Info "Fetching latest version..."
         $apiUrl = "https://api.github.com/repos/$Repo/releases/latest"
         
         # GitHub API，国内可能需要重试
@@ -178,19 +182,19 @@ function Get-LatestVersion {
         }
         
         if (-not $success) {
-            Write-Err "无法获取最新版本，请指定版本号或检查网络"
-            Write-Err "例如: .\install.ps1 -Version v1.0.0"
+            Write-Err "Cannot fetch latest version, please specify version or check network"
+            Write-Err "Example: .\install.ps1 -Version v1.0.0"
             exit 1
         }
     }
-    Write-Success "版本: $Version"
+    Write-Success "Version: $Version"
 }
 
 # 下载
 function Download-Binary {
     $downloadUrl = "https://github.com/$Repo/releases/download/$Version/$Binary"
     
-    Write-Info "下载安装程序..."
+    Write-Info "Downloading installer..."
     
     # 显示实际使用的 URL
     if ($script:MirrorMode -and $script:ActiveMirror) {
@@ -204,17 +208,17 @@ function Download-Binary {
     $tmpFile = [System.IO.Path]::GetTempFileName() + ".exe"
     
     if (-not (Invoke-Download -Url $downloadUrl -OutFile $tmpFile)) {
-        Write-Err "下载失败"
+        Write-Err "Download failed"
         exit 1
     }
     
     if (-not (Test-Path $tmpFile)) {
-        Write-Err "下载失败"
+        Write-Err "Download failed"
         exit 1
     }
     
     $script:TmpFile = $tmpFile
-    Write-Success "下载完成"
+    Write-Success "Download complete"
 }
 
 # 安装
@@ -230,7 +234,7 @@ function Install-Binary {
     # 移动文件
     Move-Item -Path $TmpFile -Destination $targetPath -Force
     
-    Write-Success "安装到: $targetPath"
+    Write-Success "Installed to: $targetPath"
     
     $script:TargetPath = $targetPath
 }
@@ -240,7 +244,7 @@ function Add-ToPath {
     $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
     
     if ($currentPath -notlike "*$InstallDir*") {
-        Write-Info "添加到 PATH..."
+        Write-Info "Adding to PATH..."
         
         $newPath = "$currentPath;$InstallDir"
         [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
@@ -248,14 +252,14 @@ function Add-ToPath {
         # 更新当前会话
         $env:Path = "$env:Path;$InstallDir"
         
-        Write-Success "已添加到 PATH (需要重新打开终端生效)"
+        Write-Success "Added to PATH (restart terminal to take effect)"
     }
 }
 
 # 运行安装程序
 function Run-Installer {
     Write-Host ""
-    Write-Info "启动 Claude Code 安装向导..."
+    Write-Info "Starting Claude Code installer wizard..."
     Write-Host ""
     
     & $TargetPath
@@ -270,7 +274,7 @@ function Main {
     # 如果需要使用镜像，查找可用的镜像
     if ($script:MirrorMode) {
         if (-not (Find-WorkingMirror)) {
-            Write-Warn "将尝试直连 GitHub..."
+            Write-Warn "Will try direct connection to GitHub..."
             $script:MirrorMode = $false
         }
     }
@@ -281,17 +285,17 @@ function Main {
     Add-ToPath
     
     Write-Host ""
-    Write-Success "安装完成！"
+    Write-Success "Installation complete!"
     Write-Host ""
     
     # 询问是否立即运行
-    $response = Read-Host "是否立即运行安装向导? [Y/n]"
+    $response = Read-Host "Run installer wizard now? [Y/n]"
     if ($response -eq "" -or $response -match "^[Yy]") {
         Run-Installer
     }
     else {
         Write-Host ""
-        Write-Info "稍后可以运行以下命令启动安装向导:"
+        Write-Info "You can run the wizard later with:"
         Write-Host "  $BinaryName" -ForegroundColor Cyan
         Write-Host ""
     }
