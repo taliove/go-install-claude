@@ -10,7 +10,7 @@
     # Configuration
     # ============================================================================
 
-    $script:Version = "3.5.2"
+    $script:Version = "3.6.0"
 
     $script:NpmRegistry = "https://registry.npmmirror.com"
     $script:ClaudePackage = "@anthropic-ai/claude-code"
@@ -86,6 +86,7 @@
 
     $script:MirrorMode = $false
     $script:ActiveMirror = ""
+    $script:NonInteractive = $false
 
     # ============================================================================
     # Output Functions
@@ -102,6 +103,35 @@
         Write-Host "[$Step/$Total] " -ForegroundColor Magenta -NoNewline
         Write-Host $Message -ForegroundColor White
         Write-Host ("-" * 50) -ForegroundColor DarkGray
+    }
+
+    function Initialize-NonInteractiveMode {
+        $nonInteractiveEnv = $env:NONINTERACTIVE
+        if ($nonInteractiveEnv -eq "true" -or $nonInteractiveEnv -eq "1") {
+            $script:NonInteractive = $true
+            Write-Info "Non-interactive mode enabled"
+        }
+    }
+
+    function Test-NonInteractiveRequirements {
+        if (-not $script:NonInteractive) { return $true }
+        $missing = @()
+        if (-not $env:PROVIDER) { $missing += "PROVIDER" }
+        if (-not $env:ANTHROPIC_API_KEY) { $missing += "ANTHROPIC_API_KEY" }
+        if ($missing.Count -gt 0) {
+            Write-Err "Non-interactive mode requires these environment variables:"
+            foreach ($var in $missing) {
+                Write-Host "  - $var" -ForegroundColor Yellow
+            }
+            Write-Host ""
+            Write-Host "Example:" -ForegroundColor Yellow
+            Write-Host '  $env:NONINTERACTIVE = "true"' -ForegroundColor DarkGray
+            Write-Host '  $env:PROVIDER = "4"' -ForegroundColor DarkGray
+            Write-Host '  $env:ANTHROPIC_API_KEY = "your-key"' -ForegroundColor DarkGray
+            Write-Host '  .\install.ps1' -ForegroundColor DarkGray
+            return $false
+        }
+        return $true
     }
 
     # ============================================================================
@@ -134,12 +164,21 @@
         Write-Host "  -Config    Run configuration wizard only (skip installation)"
         Write-Host "  -Help      Show this help message"
         Write-Host ""
+        Write-Host "Environment Variables:" -ForegroundColor Yellow
+        Write-Host "  NONINTERACTIVE    Set to 'true' for non-interactive mode"
+        Write-Host "  PROVIDER          Provider number (1=MiniMax, 2=Doubao, 3=Zhipu, 4=Wanjie)"
+        Write-Host "  ANTHROPIC_API_KEY Your API key"
+        Write-Host "  ANTHROPIC_MODEL   Model ID (optional, uses default if not set)"
+        Write-Host ""
         Write-Host "Examples:" -ForegroundColor Yellow
         Write-Host "  # Full installation"
         Write-Host "  irm <url> | iex"
         Write-Host ""
         Write-Host "  # Reconfigure API Key and model"
         Write-Host "  .\install.ps1 -Config"
+        Write-Host ""
+        Write-Host "  # Non-interactive installation"
+        Write-Host '  $env:NONINTERACTIVE="true"; $env:PROVIDER="4"; $env:ANTHROPIC_API_KEY="sk-xxx"; irm <url> | iex'
         Write-Host ""
         Write-Host "Supported Providers:" -ForegroundColor Yellow
         Write-Host "  1. MiniMax       - Free quota, fast response"
@@ -621,6 +660,16 @@
     # ============================================================================
 
     function Select-Provider {
+        # Non-interactive mode: use environment variable
+        if ($script:NonInteractive -and $env:PROVIDER) {
+            $providerNum = 0
+            if ([int]::TryParse($env:PROVIDER, [ref]$providerNum) -and $providerNum -ge 1 -and $providerNum -le $script:Providers.Count) {
+                $selected = $script:Providers[$providerNum - 1]
+                Write-Success "Provider from env: $($selected.Name)"
+                return $selected
+            }
+            Write-Warn "Invalid PROVIDER '$($env:PROVIDER)', using default"
+        }
         Write-Host ""
         Write-Host "Select API Provider:" -ForegroundColor Yellow
         Write-Host ""
@@ -648,6 +697,14 @@
 
     function Read-ApiKey {
         param($Provider)
+        # Non-interactive mode: use environment variable
+        if ($script:NonInteractive -and $env:ANTHROPIC_API_KEY) {
+            $key = $env:ANTHROPIC_API_KEY.Trim()
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                Write-Success "API Key from env"
+                return $key
+            }
+        }
         Write-Host ""
         Write-Host "Enter your API Key:" -ForegroundColor Yellow
         Write-Host "(Get from $($Provider.Name): $($Provider.ApiKeyUrl))" -ForegroundColor DarkGray
@@ -678,6 +735,21 @@
 
     function Select-Model {
         param($Provider)
+        # Non-interactive mode: use environment variable or default
+        if ($script:NonInteractive) {
+            if ($env:ANTHROPIC_MODEL) {
+                $modelId = $env:ANTHROPIC_MODEL.Trim()
+                if (-not [string]::IsNullOrWhiteSpace($modelId)) {
+                    $selectedModel = @{ ID = $modelId; Name = $modelId; Tag = ""; Description = "From env" }
+                    Write-Success "Model from env: $modelId"
+                    return $selectedModel
+                }
+            }
+            # Use first model as default
+            $defaultModel = $Provider.Models[0]
+            Write-Success "Using default model: $($defaultModel.Name)"
+            return $defaultModel
+        }
         Write-Host ""
         Write-Host "Select default model:" -ForegroundColor Yellow
         Write-Host ""
@@ -790,6 +862,36 @@
         }
     }
 
+    # ============================================================================
+    # Claude Environment Variables Configuration
+    # ============================================================================
+
+    function Set-ClaudeEnvironmentVariables {
+        param([string]$ApiKey, $Provider, $Model)
+        
+        Write-Info "Setting Claude environment variables..."
+        
+        try {
+            # Set User-level environment variables (persistent)
+            [Environment]::SetEnvironmentVariable("ANTHROPIC_BASE_URL", $Provider.BaseUrl, "User")
+            [Environment]::SetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", $ApiKey, "User")
+            [Environment]::SetEnvironmentVariable("ANTHROPIC_MODEL", $Model.ID, "User")
+            
+            # Also set for current session (immediate effect)
+            $env:ANTHROPIC_BASE_URL = $Provider.BaseUrl
+            $env:ANTHROPIC_AUTH_TOKEN = $ApiKey
+            $env:ANTHROPIC_MODEL = $Model.ID
+            
+            Write-Success "Environment variables configured:"
+            Write-Host "    ANTHROPIC_BASE_URL  = $($Provider.BaseUrl)" -ForegroundColor DarkGray
+            Write-Host "    ANTHROPIC_AUTH_TOKEN = ****$(if($ApiKey.Length -gt 8){$ApiKey.Substring($ApiKey.Length-4)}else{'****'})" -ForegroundColor DarkGray
+            Write-Host "    ANTHROPIC_MODEL     = $($Model.ID)" -ForegroundColor DarkGray
+        }
+        catch {
+            Write-Warn "Could not set environment variables: $_"
+        }
+    }
+
     function Invoke-RefreshEnvironment {
         Write-Info "Refreshing environment variables..."
         
@@ -797,6 +899,11 @@
         $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
         $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
         $env:Path = "$machinePath;$userPath"
+        
+        # Reload Claude environment variables from User scope
+        $env:ANTHROPIC_BASE_URL = [Environment]::GetEnvironmentVariable("ANTHROPIC_BASE_URL", "User")
+        $env:ANTHROPIC_AUTH_TOKEN = [Environment]::GetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", "User")
+        $env:ANTHROPIC_MODEL = [Environment]::GetEnvironmentVariable("ANTHROPIC_MODEL", "User")
         
         Write-Success "Environment refreshed, configuration is now active"
     }
@@ -857,6 +964,7 @@
         Write-Step -Step 3 -Total 3 -Message "Select Model"
         $model = Select-Model -Provider $provider
         Write-SettingsFile -ApiKey $apiKey -Provider $provider -Model $model
+        Set-ClaudeEnvironmentVariables -ApiKey $apiKey -Provider $provider -Model $model
         
         Invoke-RefreshEnvironment
         
@@ -895,6 +1003,7 @@
             
             Write-Info "Saving configuration..."
             Write-SettingsFile -ApiKey $apiKey -Provider $provider -Model $model
+            Set-ClaudeEnvironmentVariables -ApiKey $apiKey -Provider $provider -Model $model
             
             Invoke-RefreshEnvironment
             
@@ -964,6 +1073,7 @@
 
         Write-Info "Saving configuration..."
         Write-SettingsFile -ApiKey $apiKey -Provider $provider -Model $model
+        Set-ClaudeEnvironmentVariables -ApiKey $apiKey -Provider $provider -Model $model
         Add-NpmToPath
         Invoke-RefreshEnvironment
         Show-Completion -Provider $provider
@@ -975,11 +1085,14 @@
 
     Set-SafeExecutionPolicy
     Set-ConsoleEncoding
+    Initialize-NonInteractiveMode
 
     if ($Help) {
         Show-Help
         return
     }
+
+    if (-not (Test-NonInteractiveRequirements)) { return }
 
     if ($Config) {
         Invoke-ConfigOnly
