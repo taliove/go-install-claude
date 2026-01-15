@@ -789,6 +789,42 @@ configure_path() {
     success "环境变量配置完成"
 }
 
+# 配置 Claude 环境变量到 shell 配置文件
+configure_claude_env() {
+    step "配置 Claude 环境变量..."
+    
+    detect_shell
+    
+    local env_marker="# Claude Code Environment"
+    
+    # 如果已存在，先删除旧的配置块（兼容 macOS 和 Linux 的 sed）
+    if grep -q "$env_marker" "$RC_FILE" 2>/dev/null; then
+        # 创建临时文件，删除从标记开始的4行（标记+3个export）
+        if [[ "$(uname)" == "Darwin" ]]; then
+            sed -i '' "/$env_marker/,+3d" "$RC_FILE"
+        else
+            sed -i "/$env_marker/,+3d" "$RC_FILE"
+        fi
+        info "已更新现有 Claude 环境变量"
+    fi
+    
+    # 写入新的配置
+    {
+        echo ""
+        echo "$env_marker"
+        echo "export ANTHROPIC_BASE_URL=\"${SELECTED_BASE_URL}\""
+        echo "export ANTHROPIC_AUTH_TOKEN=\"${API_KEY}\""
+        echo "export ANTHROPIC_MODEL=\"${SELECTED_MODEL}\""
+    } >> "$RC_FILE"
+    
+    # 同时在当前会话中设置
+    export ANTHROPIC_BASE_URL="${SELECTED_BASE_URL}"
+    export ANTHROPIC_AUTH_TOKEN="${API_KEY}"
+    export ANTHROPIC_MODEL="${SELECTED_MODEL}"
+    
+    success "Claude 环境变量已写入 $RC_FILE"
+}
+
 # ============================================================================
 # 主流程
 # ============================================================================
@@ -844,6 +880,7 @@ config_only() {
     select_model
     input_api_key
     write_settings
+    configure_claude_env
     
     divider
     echo ""
@@ -852,8 +889,17 @@ config_only() {
     echo -e "  服务商: ${BOLD}${SELECTED_PROVIDER}${NC}"
     echo -e "  模型:   ${BOLD}${SELECTED_MODEL}${NC}"
     echo ""
-    echo -e "  运行 ${CYAN}claude${NC} 开始使用"
+    
+    # 非交互式模式下不重启 shell（用于测试）
+    if [ "$NONINTERACTIVE" = "true" ]; then
+        info "非交互式模式，跳过 shell 重启"
+        return
+    fi
+    
+    echo -e "  ${CYAN}正在重启 shell 使配置生效...${NC}"
     echo ""
+    sleep 2
+    exec "$SHELL"
 }
 
 # 完整安装流程
@@ -920,6 +966,7 @@ full_install() {
     # Step 5: 配置 PATH
     step "Step 5: 配置环境变量"
     configure_path
+    configure_claude_env
     
     divider
     
@@ -932,15 +979,20 @@ full_install() {
     echo -e "  服务商: ${BOLD}${SELECTED_PROVIDER}${NC}"
     echo -e "  模型:   ${BOLD}${SELECTED_MODEL}${NC}"
     echo ""
-    echo -e "  请运行以下命令使配置生效:"
-    echo ""
-    echo -e "    ${CYAN}source $RC_FILE${NC}"
-    echo ""
-    echo -e "  然后运行 ${CYAN}claude${NC} 开始使用"
-    echo ""
     echo -e "  ${DIM}如需重新配置，运行:${NC}"
     echo -e "    ${CYAN}curl -fsSL <url> | bash -s -- --config${NC}"
     echo ""
+    
+    # 非交互式模式下不重启 shell（用于测试）
+    if [ "$NONINTERACTIVE" = "true" ]; then
+        info "非交互式模式，跳过 shell 重启"
+        return
+    fi
+    
+    echo -e "  ${CYAN}正在重启 shell 使配置生效...${NC}"
+    echo ""
+    sleep 2
+    exec "$SHELL"
 }
 
 # 主函数
