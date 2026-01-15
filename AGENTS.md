@@ -409,6 +409,29 @@ Update the nvm install URL in install.sh:
 NVM_INSTALL_URL="https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh"
 ```
 
+### Updating Version Number
+
+Version number is hardcoded in both scripts and displayed in the banner when the script runs.
+
+**When to update version:**
+- New feature added → bump minor version (e.g., 1.0.0 → 1.1.0)
+- Bug fix → bump patch version (e.g., 1.0.0 → 1.0.1)
+- Breaking change → bump major version (e.g., 1.0.0 → 2.0.0)
+
+**Files to update:**
+
+1. **install.sh** - Update `VERSION` variable:
+   ```bash
+   VERSION="1.1.0"
+   ```
+
+2. **install.ps1** - Update `$script:Version` variable:
+   ```powershell
+   $script:Version = "1.1.0"
+   ```
+
+**Important:** Both scripts must have the same version number.
+
 ## Release Process
 
 Since there are no binary builds, releases are simply for versioning:

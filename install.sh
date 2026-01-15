@@ -35,6 +35,8 @@ NC='\033[0m'
 # ============================================================================
 # 配置
 # ============================================================================
+VERSION="3.4.0"
+
 NVM_DIR="${HOME}/.nvm"
 CLAUDE_DIR="${HOME}/.claude"
 SETTINGS_FILE="${CLAUDE_DIR}/settings.json"
@@ -860,7 +862,7 @@ show_banner() {
     echo ""
     echo -e "${CYAN}╔════════════════════════════════════════════════╗${NC}"
     echo -e "${CYAN}║  ${BOLD}Claude Code 一键安装${NC}${CYAN}                          ║${NC}"
-    echo -e "${CYAN}║  ${YELLOW}Easy Install Claude${NC}${CYAN}                            ║${NC}"
+    echo -e "${CYAN}║  ${YELLOW}Easy Install Claude${NC}${CYAN}              ${DIM}v${VERSION}${NC}${CYAN}  ║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════════════╝${NC}"
     echo ""
 }

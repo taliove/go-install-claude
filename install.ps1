@@ -10,6 +10,8 @@
     # Configuration
     # ============================================================================
 
+    $script:Version = "3.4.0"
+
     $script:NpmRegistry = "https://registry.npmmirror.com"
     $script:ClaudePackage = "@anthropic-ai/claude-code"
     $script:ClaudeDir = "$env:USERPROFILE\.claude"
@@ -114,7 +116,8 @@
         Write-Host "                       |" -ForegroundColor Cyan
         Write-Host "|  " -ForegroundColor Cyan -NoNewline
         Write-Host "Easy Install Claude" -ForegroundColor Yellow -NoNewline
-        Write-Host "                       |" -ForegroundColor Cyan
+        Write-Host "              v$script:Version" -ForegroundColor DarkGray -NoNewline
+        Write-Host "  |" -ForegroundColor Cyan
         Write-Host "+----------------------------------------------+" -ForegroundColor Cyan
         Write-Host ""
     }
