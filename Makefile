@@ -1,7 +1,7 @@
 # Claude Code 一键安装工具 - Makefile
 # Go 项目标准构建命令
 
-.PHONY: all build build-all clean test lint fmt run help tools
+.PHONY: all build build-all clean test test-e2e test-e2e-clean lint fmt run help tools
 
 # 版本信息
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -21,14 +21,15 @@ all: lint test build
 help:
 	@echo "Claude Code 安装工具 - 可用命令:"
 	@echo ""
-	@echo "  make build     - 构建当前平台"
-	@echo "  make build-all - 构建所有平台"
-	@echo "  make test      - 运行测试"
-	@echo "  make lint      - 代码检查"
-	@echo "  make fmt       - 格式化代码"
-	@echo "  make clean     - 清理构建"
-	@echo "  make run       - 运行开发版"
-	@echo "  make tools     - 安装开发工具"
+	@echo "  make build       - 构建当前平台"
+	@echo "  make build-all   - 构建所有平台"
+	@echo "  make test        - 运行单元测试"
+	@echo "  make test-e2e    - 运行 E2E 沙盒测试 (Docker)"
+	@echo "  make lint        - 代码检查"
+	@echo "  make fmt         - 格式化代码"
+	@echo "  make clean       - 清理构建"
+	@echo "  make run         - 运行开发版"
+	@echo "  make tools       - 安装开发工具"
 	@echo ""
 
 # 格式化代码
@@ -47,8 +48,21 @@ lint:
 
 # 运行测试
 test:
-	@echo "运行测试..."
+	@echo "运行单元测试..."
 	go test -v -race -cover ./...
+
+# E2E 沙盒测试 (从 GitHub 拉取最新发布版本)
+test-e2e:
+	@echo "运行 E2E 沙盒测试 (从 GitHub 拉取最新版本)..."
+	docker compose -f test/e2e/docker-compose.yml build --no-cache
+	docker compose -f test/e2e/docker-compose.yml run --rm e2e-test
+	@echo "E2E 测试完成!"
+
+# 清理 E2E 测试资源
+test-e2e-clean:
+	@echo "清理 E2E 测试资源..."
+	docker compose -f test/e2e/docker-compose.yml down --rmi local --volumes
+	@echo "清理完成!"
 
 # 构建当前平台
 build:

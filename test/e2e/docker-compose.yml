@@ -1,0 +1,16 @@
+services:
+  e2e-test:
+    build:
+      context: ../..
+      dockerfile: test/e2e/Dockerfile
+    environment:
+      # GitHub 仓库地址
+      - GITHUB_REPO=taliove/go-install-claude
+      # 是否运行完整安装测试 (npm install)
+      - RUN_FULL_INSTALL=true
+      # 可选: GitHub Token (避免 API 限流)
+      # - GITHUB_TOKEN=${GITHUB_TOKEN}
+    # 网络访问 (需要下载 Release 和 npm 包)
+    network_mode: bridge
+    # 超时设置 (完整安装可能需要几分钟)
+    stop_grace_period: 10m

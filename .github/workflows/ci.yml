@@ -75,3 +75,24 @@ jobs:
         with:
           name: binaries
           path: dist/
+
+  # E2E 沙盒测试 (从 GitHub Release 下载最新版本)
+  e2e-test:
+    name: E2E Docker Test
+    runs-on: ubuntu-latest
+    # 仅在 main 分支 push 时运行 (需要已发布的 Release)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build E2E test image
+        run: docker compose -f test/e2e/docker-compose.yml build
+
+      - name: Run E2E tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: docker compose -f test/e2e/docker-compose.yml run --rm e2e-test
+
+      - name: Cleanup
+        if: always()
+        run: docker compose -f test/e2e/docker-compose.yml down --rmi local --volumes
