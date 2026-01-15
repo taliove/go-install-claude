@@ -60,6 +60,27 @@ go test -v -race ./...     # Must pass all tests
 go build ./cmd/installer   # Must compile successfully
 ```
 
+### Commit and Push Protocol
+
+**IMPORTANT**: When the user requests "签入推送" (commit and push), the AI agent MUST:
+
+1. **Run unit tests first**:
+   ```bash
+   go test -v ./...
+   ```
+
+2. **Run E2E tests**:
+   ```bash
+   bash test/e2e/tests/00_install_script.sh  # Install script validation
+   # Other applicable E2E tests
+   ```
+
+3. **Only commit and push after ALL tests pass**
+
+4. **If any test fails**: Fix the issue first, then re-run tests before committing
+
+This ensures code quality and prevents broken builds in CI.
+
 ## Code Style Guidelines
 
 ### Import Organization
