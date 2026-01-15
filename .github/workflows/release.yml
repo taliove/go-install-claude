@@ -43,12 +43,12 @@ jobs:
 
           **Windows PowerShell (国内用户):**
           ```powershell
-          iwr -useb https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.ps1 | iex
+          iwr -useb https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-install-claude/main/bootstrap.ps1 | iex
           ```
 
           **Windows PowerShell (海外用户):**
           ```powershell
-          iwr -useb https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.ps1 | iex
+          iwr -useb https://raw.githubusercontent.com/taliove/easy-install-claude/main/bootstrap.ps1 | iex
           ```
 
           ### 特性
