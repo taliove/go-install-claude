@@ -249,6 +249,89 @@ styles.IconRocket  // 🚀
 - **Push to main**: Runs lint, test, build (ci.yml)
 - **Push tag v***: Creates GitHub release with binaries (release.yml)
 
+## Release Process
+
+### Semantic Versioning
+
+This project follows [Semantic Versioning](https://semver.org/):
+- **MAJOR** (v2.0.0): Breaking changes
+- **MINOR** (v1.1.0): New features, backward compatible
+- **PATCH** (v1.0.1): Bug fixes, backward compatible
+
+### Pre-Release Checklist
+
+**ALWAYS run before creating a release:**
+```bash
+# 1. Ensure working directory is clean
+git status
+
+# 2. Run all checks
+golangci-lint run          # Must pass with no errors
+go test -v ./...           # Must pass all tests  
+go build ./cmd/installer   # Must compile successfully
+
+# 3. Verify you're on main branch and up to date
+git checkout main
+git pull origin main
+```
+
+### Creating a Release
+
+```bash
+# 1. Determine version number based on changes
+#    - Breaking changes: bump MAJOR
+#    - New features: bump MINOR  
+#    - Bug fixes: bump PATCH
+
+# 2. Create annotated tag with changelog
+git tag -a v1.2.0 -m "v1.2.0: Brief description
+
+Changes:
+- feat: new feature description
+- fix: bug fix description
+- docs: documentation updates"
+
+# 3. Push tag to trigger GitHub Actions release
+git push origin v1.2.0
+
+# 4. Verify release on GitHub Actions
+#    https://github.com/taliove/go-install-claude/actions
+```
+
+### Release Workflow (Automated)
+
+When a tag matching `v*` is pushed, GitHub Actions will:
+1. Build binaries for all platforms (Windows, Linux, macOS)
+2. Compress with UPX (Linux/Windows only)
+3. Generate SHA256 checksums
+4. Create GitHub Release with binaries attached
+
+### Hotfix Process
+
+For urgent fixes to a released version:
+```bash
+# 1. Create hotfix from the release tag
+git checkout -b hotfix/v1.2.1 v1.2.0
+
+# 2. Make fixes and commit
+git add .
+git commit -m "fix: critical bug description"
+
+# 3. Run all checks
+golangci-lint run && go test -v ./... && go build ./cmd/installer
+
+# 4. Merge to main
+git checkout main
+git merge hotfix/v1.2.1
+
+# 5. Tag and release
+git tag -a v1.2.1 -m "v1.2.1: Hotfix description"
+git push origin main v1.2.1
+
+# 6. Clean up
+git branch -d hotfix/v1.2.1
+```
+
 ## Common Tasks
 
 ### Adding a New Model
