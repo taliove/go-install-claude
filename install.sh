@@ -35,7 +35,7 @@ NC='\033[0m'
 # ============================================================================
 # 配置
 # ============================================================================
-VERSION="3.4.0"
+VERSION="3.5.0"
 
 NVM_DIR="${HOME}/.nvm"
 CLAUDE_DIR="${HOME}/.claude"
@@ -519,7 +519,7 @@ select_provider() {
         local name="${PROVIDER_NAMES[$i]}"
         local key_url="${PROVIDER_KEY_URLS[$i]}"
         
-        if [ "$i" -eq 0 ]; then
+        if [ "$i" -eq 3 ]; then
             echo -e "  ${GREEN}${num}.${NC} ${BOLD}${name}${NC}  ${YELLOW}[默认]${NC}"
         else
             echo -e "  ${num}. ${name}"
@@ -529,8 +529,8 @@ select_provider() {
     
     echo ""
     while true; do
-        read -rp "  请选择服务商 [1-4，默认 1]: " choice </dev/tty
-        choice="${choice:-1}"
+        read -rp "  请选择服务商 [1-4，默认 4]: " choice </dev/tty
+        choice="${choice:-4}"
         
         if [[ "$choice" =~ ^[1-4]$ ]]; then
             SELECTED_PROVIDER_INDEX=$((choice - 1))
@@ -827,6 +827,18 @@ configure_claude_env() {
     success "Claude 环境变量已写入 $RC_FILE"
 }
 
+# 使配置生效（source 配置文件）
+source_config() {
+    detect_shell
+    
+    if [ -f "$RC_FILE" ]; then
+        info "使配置生效..."
+        # shellcheck source=/dev/null
+        . "$RC_FILE"
+        success "配置已生效"
+    fi
+}
+
 # ============================================================================
 # 主流程
 # ============================================================================
@@ -892,23 +904,69 @@ config_only() {
     echo -e "  模型:   ${BOLD}${SELECTED_MODEL}${NC}"
     echo ""
     
-    # 非交互式模式下不重启 shell（用于测试）
+    # 非交互式模式下跳过 source（用于测试）
     if [ "$NONINTERACTIVE" = "true" ]; then
-        info "非交互式模式，跳过 shell 重启"
+        info "非交互式模式，跳过配置生效"
         return
     fi
     
-    echo -e "  ${CYAN}正在重启 shell 使配置生效...${NC}"
+    source_config
     echo ""
-    sleep 2
-    exec "$SHELL"
+    echo -e "  ${GREEN}配置已生效，可直接使用 claude 命令${NC}"
+    echo ""
 }
 
 # 完整安装流程
 full_install() {
     show_banner
     
-    # 检测网络环境
+    # 首先检查 Claude Code 是否已安装
+    # 若已安装，则跳过网络检测和安装步骤，直接进入配置
+    if command -v claude &> /dev/null; then
+        success "检测到 Claude Code 已安装"
+        info "将直接进入配置环节..."
+        divider
+        
+        # 直接进入配置流程
+        step "配置 Claude Code"
+        select_provider
+        select_model
+        input_api_key
+        write_settings
+        
+        divider
+        
+        step "配置环境变量"
+        detect_shell
+        configure_claude_env
+        
+        divider
+        
+        # 完成
+        echo ""
+        echo -e "${GREEN}╔════════════════════════════════════════════════╗${NC}"
+        echo -e "${GREEN}║  ${BOLD}配置完成！${NC}${GREEN}                                    ║${NC}"
+        echo -e "${GREEN}╚════════════════════════════════════════════════╝${NC}"
+        echo ""
+        echo -e "  服务商: ${BOLD}${SELECTED_PROVIDER}${NC}"
+        echo -e "  模型:   ${BOLD}${SELECTED_MODEL}${NC}"
+        echo ""
+        
+        # 非交互式模式下跳过 source（用于测试）
+        if [ "$NONINTERACTIVE" = "true" ]; then
+            info "非交互式模式，跳过配置生效"
+            return
+        fi
+        
+        source_config
+        echo ""
+        echo -e "  ${GREEN}配置已生效，可直接使用 claude 命令${NC}"
+        echo ""
+        return
+    fi
+    
+    # Claude Code 未安装，执行完整安装流程
+    # 先检测网络环境
     detect_mirror_need
     
     if [ "$MIRROR_MODE" = true ]; then
@@ -985,16 +1043,16 @@ full_install() {
     echo -e "    ${CYAN}curl -fsSL <url> | bash -s -- --config${NC}"
     echo ""
     
-    # 非交互式模式下不重启 shell（用于测试）
+    # 非交互式模式下跳过 source（用于测试）
     if [ "$NONINTERACTIVE" = "true" ]; then
-        info "非交互式模式，跳过 shell 重启"
+        info "非交互式模式，跳过配置生效"
         return
     fi
     
-    echo -e "  ${CYAN}正在重启 shell 使配置生效...${NC}"
+    source_config
     echo ""
-    sleep 2
-    exec "$SHELL"
+    echo -e "  ${GREEN}配置已生效，可直接使用 claude 命令${NC}"
+    echo ""
 }
 
 # 主函数

@@ -10,7 +10,7 @@
     # Configuration
     # ============================================================================
 
-    $script:Version = "3.4.0"
+    $script:Version = "3.5.0"
 
     $script:NpmRegistry = "https://registry.npmmirror.com"
     $script:ClaudePackage = "@anthropic-ai/claude-code"
@@ -31,7 +31,7 @@
         @{
             ID          = "minimax"
             Name        = "MiniMax"
-            Tag         = "[Recommended]"
+            Tag         = ""
             Description = "Free quota, fast response"
             BaseUrl     = "https://api.minimaxi.com/anthropic"
             ApiKeyUrl   = "https://platform.minimaxi.com"
@@ -69,7 +69,7 @@
         @{
             ID          = "wanjie"
             Name        = "Wanjie Data"
-            Tag         = ""
+            Tag         = "[Recommended]"
             Description = "Claude native models proxy"
             BaseUrl     = "https://maas-openapi.wanjiedata.com/api/anthropic"
             ApiKeyUrl   = "https://data.wanjiehuyu.com"
@@ -461,18 +461,28 @@
     }
 
     function Update-PathEnvironment {
+        # Refresh PATH from registry
         $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
         $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
         $env:Path = "$machinePath;$userPath"
+        
+        # Add common Node.js paths if they exist
         $nodePaths = @(
             "$env:ProgramFiles\nodejs"
             "${env:ProgramFiles(x86)}\nodejs"
             "$env:LOCALAPPDATA\Programs\nodejs"
+            "$env:APPDATA\npm"
         )
         foreach ($nodePath in $nodePaths) {
             if ((Test-Path $nodePath) -and ($env:Path -notlike "*$nodePath*")) {
-                $env:Path = "$env:Path;$nodePath"
+                $env:Path = "$nodePath;$env:Path"
             }
+        }
+        
+        # Verify npm is accessible
+        $npmCmd = Get-Command npm -ErrorAction SilentlyContinue
+        if ($npmCmd) {
+            Write-Info "npm found at: $($npmCmd.Source)"
         }
     }
 
@@ -481,11 +491,22 @@
     # ============================================================================
 
     function Set-NpmRegistry {
+        $npmRegistry = "https://registry.npmmirror.com"
         Write-Info "Configuring npm registry (China mirror)..."
         try {
-            & npm config set registry $script:NpmRegistry 2>$null
-            Write-Success "npm registry configured: $script:NpmRegistry"
-            return $true
+            $npmPath = Get-Command npm -ErrorAction SilentlyContinue
+            if (-not $npmPath) {
+                Write-Warn "npm not found in PATH, skipping registry configuration"
+                return $false
+            }
+            & npm config set registry $npmRegistry 2>$null
+            if ($LASTEXITCODE -eq 0) {
+                Write-Success "npm registry configured: $npmRegistry"
+                return $true
+            } else {
+                Write-Warn "npm config command failed"
+                return $false
+            }
         }
         catch {
             Write-Warn "npm registry configuration failed: $_"
@@ -510,13 +531,42 @@
     }
 
     function Install-ClaudeCodePackage {
+        $claudePackage = "@anthropic-ai/claude-code"
         Write-Info "Installing Claude Code..."
         Write-Info "This may take a few minutes, please wait..."
+        
+        # Find npm executable path
+        $npmCmd = Get-Command npm -ErrorAction SilentlyContinue
+        if (-not $npmCmd) {
+            # Try common Node.js paths
+            $nodePaths = @(
+                "$env:ProgramFiles\nodejs\npm.cmd"
+                "${env:ProgramFiles(x86)}\nodejs\npm.cmd"
+                "$env:LOCALAPPDATA\Programs\nodejs\npm.cmd"
+                "$env:APPDATA\npm\npm.cmd"
+            )
+            foreach ($path in $nodePaths) {
+                if (Test-Path $path) {
+                    $npmCmd = $path
+                    break
+                }
+            }
+        } else {
+            $npmCmd = $npmCmd.Source
+        }
+        
+        if (-not $npmCmd) {
+            Write-Err "npm not found. Please ensure Node.js is installed correctly."
+            return $false
+        }
+        
+        Write-Info "Using npm: $npmCmd"
+        
         try {
-            $process = Start-Process -FilePath "npm" -ArgumentList "install", "-g", $script:ClaudePackage -NoNewWindow -Wait -PassThru
+            $process = Start-Process -FilePath $npmCmd -ArgumentList "install", "-g", $claudePackage -NoNewWindow -Wait -PassThru
             if ($process.ExitCode -eq 0) {
                 Update-PathEnvironment
-                $npmGlobalDir = & npm config get prefix 2>$null
+                $npmGlobalDir = & $npmCmd config get prefix 2>$null
                 if ($npmGlobalDir -and (Test-Path $npmGlobalDir)) {
                     if ($env:Path -notlike "*$npmGlobalDir*") {
                         $env:Path = "$env:Path;$npmGlobalDir"
@@ -554,12 +604,12 @@
             Write-Host "- $($provider.Description)" -ForegroundColor DarkGray
         }
         Write-Host ""
-        $choice = Read-Host "Enter number [1-$($script:Providers.Count)], default 1"
-        if ([string]::IsNullOrWhiteSpace($choice)) { $choice = "1" }
+        $choice = Read-Host "Enter number [1-$($script:Providers.Count)], default 4"
+        if ([string]::IsNullOrWhiteSpace($choice)) { $choice = "4" }
         $index = 0
         if (-not [int]::TryParse($choice, [ref]$index) -or $index -lt 1 -or $index -gt $script:Providers.Count) {
             Write-Warn "Invalid choice, using default provider"
-            $index = 1
+            $index = 4
         }
         $selected = $script:Providers[$index - 1]
         Write-Success "Selected: $($selected.Name)"
@@ -710,6 +760,17 @@
         }
     }
 
+    function Invoke-RefreshEnvironment {
+        Write-Info "Refreshing environment variables..."
+        
+        # Reload User and Machine PATH
+        $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+        $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+        $env:Path = "$machinePath;$userPath"
+        
+        Write-Success "Environment refreshed, configuration is now active"
+    }
+
     # ============================================================================
     # Completion
     # ============================================================================
@@ -766,8 +827,15 @@
         Write-Step -Step 3 -Total 3 -Message "Select Model"
         $model = Select-Model -Provider $provider
         Write-SettingsFile -ApiKey $apiKey -Provider $provider -Model $model
+        
+        Invoke-RefreshEnvironment
+        
         Write-Host ""
         Write-Success "Configuration complete!"
+        Write-Host ""
+        Write-Host "You can now use " -ForegroundColor White -NoNewline
+        Write-Host "claude" -ForegroundColor Cyan -NoNewline
+        Write-Host " command directly." -ForegroundColor White
         Write-Host ""
     }
 
@@ -777,6 +845,47 @@
 
     function Invoke-FullInstall {
         Show-Banner
+        
+        # First check if Claude Code is already installed
+        # If installed, skip network detection and installation, go directly to configuration
+        if (Test-ClaudeCode) {
+            Write-Success "Claude Code is already installed"
+            Write-Info "Proceeding to configuration..."
+            Write-Host ""
+            
+            # Direct configuration flow
+            Write-Step -Step 1 -Total 3 -Message "Select Provider"
+            $provider = Select-Provider
+            
+            Write-Step -Step 2 -Total 3 -Message "Configure API Key"
+            $apiKey = Read-ApiKey -Provider $provider
+            
+            Write-Step -Step 3 -Total 3 -Message "Select Model"
+            $model = Select-Model -Provider $provider
+            
+            Write-Info "Saving configuration..."
+            Write-SettingsFile -ApiKey $apiKey -Provider $provider -Model $model
+            
+            Invoke-RefreshEnvironment
+            
+            Write-Host ""
+            Write-Host "+----------------------------------------------+" -ForegroundColor Green
+            Write-Host "|  " -ForegroundColor Green -NoNewline
+            Write-Host "Configuration Complete!" -ForegroundColor White -NoNewline
+            Write-Host "                     |" -ForegroundColor Green
+            Write-Host "+----------------------------------------------+" -ForegroundColor Green
+            Write-Host ""
+            Write-Host "Provider: " -ForegroundColor Yellow -NoNewline
+            Write-Host "$($provider.Name)" -ForegroundColor Cyan
+            Write-Host ""
+            Write-Host "You can now use " -ForegroundColor White -NoNewline
+            Write-Host "claude" -ForegroundColor Cyan -NoNewline
+            Write-Host " command directly." -ForegroundColor White
+            Write-Host ""
+            return
+        }
+        
+        # Claude Code not installed, run full installation flow
         $totalSteps = 6
         $currentStep = 0
 
@@ -826,6 +935,7 @@
         Write-Info "Saving configuration..."
         Write-SettingsFile -ApiKey $apiKey -Provider $provider -Model $model
         Add-NpmToPath
+        Invoke-RefreshEnvironment
         Show-Completion -Provider $provider
     }
 
