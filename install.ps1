@@ -1,10 +1,13 @@
-# Claude Code 一键安装脚本 (Windows PowerShell)
+﻿# Claude Code 一键安装脚本 (Windows PowerShell)
 #
 # 国内用户（推荐，使用加速镜像）:
-#   iwr -useb https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.ps1 | iex
+#   iwr -useb https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-install-claude/main/bootstrap.ps1 | iex
 #
 # 海外用户（直连 GitHub）:
-#   iwr -useb https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.ps1 | iex
+#   iwr -useb https://raw.githubusercontent.com/taliove/easy-install-claude/main/bootstrap.ps1 | iex
+#
+# 本地运行（已下载）:
+#   .\install.ps1
 #
 # 仅重新配置:
 #   .\install.ps1 -Config
@@ -21,9 +24,65 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# 设置控制台输出编码为 UTF-8
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$OutputEncoding = [System.Text.Encoding]::UTF8
+# ============================================================================
+# 控制台编码设置 (解决中文乱码问题)
+# ============================================================================
+
+# 保存原始编码设置以便恢复
+$script:OriginalOutputEncoding = [Console]::OutputEncoding
+$script:OriginalInputEncoding = [Console]::InputEncoding
+$script:OriginalPSOutputEncoding = $OutputEncoding
+$script:OriginalCodePage = $null
+
+function Initialize-ConsoleEncoding {
+    # 尝试设置控制台代码页为 UTF-8 (65001)
+    try {
+        # 保存当前代码页
+        $chcpOutput = cmd /c chcp 2>$null
+        if ($chcpOutput -match '\d+') {
+            $script:OriginalCodePage = $matches[0]
+        }
+        
+        # 设置 UTF-8 代码页
+        $null = cmd /c chcp 65001 2>$null
+    }
+    catch {
+        # 忽略错误，继续执行
+    }
+    
+    # 设置 PowerShell 编码
+    try {
+        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+        [Console]::InputEncoding = [System.Text.Encoding]::UTF8
+        $script:OutputEncoding = [System.Text.Encoding]::UTF8
+        $global:OutputEncoding = [System.Text.Encoding]::UTF8
+    }
+    catch {
+        # 在某些受限环境中可能失败，忽略
+    }
+    
+    # 设置默认编码参数
+    $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
+    $PSDefaultParameterValues['Set-Content:Encoding'] = 'utf8'
+}
+
+function Restore-ConsoleEncoding {
+    # 恢复原始编码设置
+    try {
+        if ($script:OriginalCodePage) {
+            $null = cmd /c chcp $script:OriginalCodePage 2>$null
+        }
+        [Console]::OutputEncoding = $script:OriginalOutputEncoding
+        [Console]::InputEncoding = $script:OriginalInputEncoding
+        $global:OutputEncoding = $script:OriginalPSOutputEncoding
+    }
+    catch {
+        # 忽略恢复错误
+    }
+}
+
+# 立即初始化编码
+Initialize-ConsoleEncoding
 
 # ============================================================================
 # 配置常量
@@ -719,4 +778,10 @@ function Main {
 }
 
 # 运行
-Main
+try {
+    Main
+}
+finally {
+    # 恢复控制台编码
+    Restore-ConsoleEncoding
+}

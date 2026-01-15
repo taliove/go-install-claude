@@ -17,6 +17,7 @@ One command to install everything: Node.js, Claude Code, and configuration.
 claude-installer/
 ├── install.sh              # Linux/macOS installation script
 ├── install.ps1             # Windows installation script (PowerShell)
+├── bootstrap.ps1           # Windows bootstrap for UTF-8 encoding (ASCII only)
 ├── test/
 │   ├── Dockerfile          # Docker container for E2E testing
 │   └── test-e2e.sh         # E2E test script

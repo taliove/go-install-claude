@@ -178,6 +178,27 @@ do_download() {
 # 检测函数
 # ============================================================================
 
+# 检测 Xcode Command Line Tools (macOS only)
+# 返回 0 表示已安装或非 macOS，返回 1 表示需要安装
+check_xcode_clt() {
+    # 非 macOS 系统跳过检查
+    if [ "$(uname)" != "Darwin" ]; then
+        return 0
+    fi
+    
+    # 检查 git 是否可用（Xcode CLT 的主要依赖）
+    if command -v git &> /dev/null; then
+        return 0
+    fi
+    
+    # 备用检查：xcode-select -p 是否成功
+    if xcode-select -p &> /dev/null 2>&1; then
+        return 0
+    fi
+    
+    return 1
+}
+
 # 检测用户 shell
 detect_shell() {
     SHELL_NAME=$(basename "$SHELL")
@@ -236,6 +257,31 @@ load_nvm() {
 # ============================================================================
 # 安装函数
 # ============================================================================
+
+# 安装 Xcode Command Line Tools (macOS only)
+install_xcode_clt() {
+    step "安装 Xcode Command Line Tools..."
+    info "这是 macOS 上使用 git 的必要依赖"
+    echo ""
+    
+    # 触发安装对话框
+    xcode-select --install 2>/dev/null || true
+    
+    echo ""
+    warn "请在弹出的窗口中点击「安装」按钮"
+    info "安装完成后按 Enter 继续..."
+    read -r
+    
+    # 验证安装是否成功
+    if ! command -v git &> /dev/null; then
+        error "Xcode Command Line Tools 安装似乎未完成"
+        error "请手动运行: xcode-select --install"
+        error "安装完成后重新运行此脚本"
+        exit 1
+    fi
+    
+    success "Xcode Command Line Tools 安装完成"
+}
 
 # 安装 nvm
 install_nvm() {
@@ -569,6 +615,11 @@ full_install() {
         success "Node.js $(node -v) 已安装"
     else
         info "需要安装 Node.js ${NODE_MIN_VERSION}+"
+        
+        # macOS: 检查 Xcode Command Line Tools（nvm 需要 git）
+        if ! check_xcode_clt; then
+            install_xcode_clt
+        fi
         
         # 检查/安装 nvm
         if check_nvm; then

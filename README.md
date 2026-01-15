@@ -35,7 +35,7 @@ curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-in
 #### Windows (PowerShell)
 
 ```powershell
-iwr -useb https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.ps1 | iex
+iwr -useb https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-install-claude/main/bootstrap.ps1 | iex
 ```
 
 ### 海外用户（直连 GitHub）
@@ -49,7 +49,7 @@ curl -fsSL https://raw.githubusercontent.com/taliove/easy-install-claude/main/in
 #### Windows (PowerShell)
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/taliove/easy-install-claude/main/bootstrap.ps1 | iex
 ```
 
 ## 🔄 重新配置
