@@ -434,12 +434,47 @@ Version number is hardcoded in both scripts and displayed in the banner when the
 
 ## Release Process
 
-Since there are no binary builds, releases are simply for versioning:
+When the user requests to release a new version ("发布版本"):
+
+### Pre-Release Checklist
+
+1. **Update version numbers in BOTH scripts** (REQUIRED):
+   - `install.sh`: Update `VERSION="x.y.z"`
+   - `install.ps1`: Update `$script:Version = "x.y.z"`
+   - Both must have the SAME version number
+
+2. **Run E2E tests** (REQUIRED):
+   ```bash
+   docker build -t claude-installer-test -f test/Dockerfile .
+   docker run --rm claude-installer-test bash ./test-e2e.sh
+   ```
+
+3. **Validate syntax**:
+   - Bash: `bash -n install.sh`
+   - PowerShell: Parse test via scriptblock
+
+### Release Steps
 
 ```bash
-# Create version tag
-git tag -a v3.0.0 -m "v3.0.0: Multi-provider support"
-git push origin v3.0.0
+# 1. Stage and commit changes (include version bump)
+git add install.sh install.ps1
+git commit -m "feat/fix: description of changes
+
+- Change details
+- Version bump to x.y.z"
+
+# 2. Push to main
+git push origin main
+
+# 3. Create and push version tag
+git tag -a vx.y.z -m "vx.y.z: Brief description"
+git push origin vx.y.z
 ```
+
+### Version Numbering
+
+- **Major** (x.0.0): Breaking changes
+- **Minor** (0.x.0): New features
+- **Patch** (0.0.x): Bug fixes
 
 The scripts are always fetched from `main` branch, so users always get the latest version.

@@ -10,7 +10,7 @@
     # Configuration
     # ============================================================================
 
-    $script:Version = "3.5.1"
+    $script:Version = "3.5.2"
 
     $script:NpmRegistry = "https://registry.npmmirror.com"
     $script:ClaudePackage = "@anthropic-ai/claude-code"
