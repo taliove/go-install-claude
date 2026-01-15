@@ -334,7 +334,7 @@ install_xcode_clt() {
     echo ""
     warn "请在弹出的窗口中点击「安装」按钮"
     info "安装完成后按 Enter 继续..."
-    read -r
+    read -r </dev/tty
     
     if ! command -v git &> /dev/null; then
         error "Xcode Command Line Tools 安装似乎未完成"
@@ -527,7 +527,7 @@ select_provider() {
     
     echo ""
     while true; do
-        read -rp "  请选择服务商 [1-4，默认 1]: " choice
+        read -rp "  请选择服务商 [1-4，默认 1]: " choice </dev/tty
         choice="${choice:-1}"
         
         if [[ "$choice" =~ ^[1-4]$ ]]; then
@@ -607,7 +607,7 @@ select_model() {
     
     echo ""
     while true; do
-        read -rp "  请选择 [1-${model_count}，默认 1]: " choice
+        read -rp "  请选择 [1-${model_count}，默认 1]: " choice </dev/tty
         choice="${choice:-1}"
         
         if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "$model_count" ]; then
@@ -617,7 +617,7 @@ select_model() {
             # 处理自定义模型输入
             if [ "$selected_id" = "__custom__" ]; then
                 echo ""
-                read -rp "  请输入自定义模型名称 [默认 ark-code-latest]: " custom_model
+                read -rp "  请输入自定义模型名称 [默认 ark-code-latest]: " custom_model </dev/tty
                 SELECTED_MODEL="${custom_model:-ark-code-latest}"
             else
                 SELECTED_MODEL="$selected_id"
@@ -650,7 +650,7 @@ input_api_key() {
     echo ""
     
     while true; do
-        read -rp "  API Key: " API_KEY
+        read -rp "  API Key: " API_KEY </dev/tty
         if [ -n "$API_KEY" ]; then
             success "API Key 已设置"
             break
