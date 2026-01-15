@@ -1,10 +1,10 @@
 # AGENTS.md - AI Coding Agent Guidelines
 
-This document provides guidelines for AI coding agents working on the `claude-installer` project.
+This document provides guidelines for AI coding agents working on the `easy-install-claude` project.
 
 ## Project Overview
 
-A Shell/PowerShell-based installer for Claude Code with pre-configured Wanjie Data proxy (万界数据).
+A Shell/PowerShell-based installer for Claude Code with multi-provider support (MiniMax, Doubao, Zhipu AI, Wanjie Data).
 One command to install everything: Node.js, Claude Code, and configuration.
 
 - **Scripts**: Bash (install.sh), PowerShell (install.ps1)
@@ -14,7 +14,7 @@ One command to install everything: Node.js, Claude Code, and configuration.
 ## Project Structure
 
 ```
-claude-installer/
+easy-install-claude/
 ├── install.sh              # Linux/macOS installation script
 ├── install.ps1             # Windows installation script (PowerShell)
 ├── bootstrap.ps1           # Windows bootstrap for UTF-8 encoding (ASCII only)
@@ -30,6 +30,15 @@ claude-installer/
 ├── .gitignore
 └── .editorconfig
 ```
+
+## Supported Providers
+
+| # | Provider | Base URL | Models | API Key URL |
+|---|----------|----------|--------|-------------|
+| 1 | **MiniMax** (Default) | `https://api.minimaxi.com/anthropic` | M2.1-flash, M2.1-standard | platform.minimaxi.com |
+| 2 | **豆包 (Doubao)** | `https://ark.cn-beijing.volces.com/api/coding` | ark-code-latest, custom | console.volcengine.com/ark |
+| 3 | **智谱 AI (Zhipu)** | `https://open.bigmodel.cn/api/anthropic` | GLM-4.7, GLM-4.5-Air | open.bigmodel.cn |
+| 4 | **万界数据 (Wanjie)** | `https://maas-openapi.wanjiedata.com/api/anthropic` | Claude series | data.wanjiehuyu.com |
 
 ## Testing
 
@@ -56,8 +65,8 @@ The E2E test (`test/test-e2e.sh`) validates:
 2. **Environment Detection**: OS detection, curl availability, --help flag
 3. **Node.js Installation**: nvm installation via China mirror, Node.js LTS
 4. **Claude Code Installation**: npm global install of @anthropic-ai/claude-code
-5. **Wanjie Proxy Configuration**: settings.json creation with correct values
-6. **Configuration Verification**: Validates ANTHROPIC_BASE_URL points to Wanjie
+5. **Provider Configuration**: settings.json creation with correct provider values
+6. **Configuration Verification**: Validates ANTHROPIC_BASE_URL matches selected provider
 7. **Claude Execution**: Verifies claude command is available
 
 ### Skip Options
@@ -74,8 +83,9 @@ The install script supports non-interactive mode for testing:
 ```bash
 # Environment variables for non-interactive installation
 NONINTERACTIVE=true
-ANTHROPIC_API_KEY=sk-xxx
-ANTHROPIC_MODEL=claude-sonnet-4-20250514
+PROVIDER=1                              # 1=MiniMax, 2=Doubao, 3=Zhipu, 4=Wanjie
+ANTHROPIC_API_KEY=your-api-key
+ANTHROPIC_MODEL=M2.1-flash              # Model depends on provider
 ```
 
 ### Local Syntax Validation
@@ -119,7 +129,8 @@ if ($errors) { $errors | ForEach-Object { Write-Error $_ } }
 3. **Function naming**: Use `snake_case`
    ```bash
    install_nodejs() { ... }
-   prompt_api_key() { ... }
+   select_provider() { ... }
+   select_model() { ... }
    ```
 
 4. **Variable naming**: 
@@ -167,7 +178,8 @@ if ($errors) { $errors | ForEach-Object { Write-Error $_ } }
 1. **Function naming**: Use `Verb-Noun` pattern (PascalCase)
    ```powershell
    function Install-NodeJS { ... }
-   function Get-LatestVersion { ... }
+   function Select-Provider { ... }
+   function Select-Model { ... }
    ```
 
 2. **Variable naming**: Use `$PascalCase` for script-scope, `$camelCase` for local
@@ -192,26 +204,64 @@ if ($errors) { $errors | ForEach-Object { Write-Error $_ } }
    function Write-Success { Write-Host "[+] " -ForegroundColor Green -NoNewline; Write-Host $args[0] }
    ```
 
-## Model Configuration
+## Provider Configuration
 
-### Supported Models
+### Provider Data Structure (install.sh)
 
+```bash
+# Provider arrays
+declare -a PROVIDER_NAMES=("MiniMax" "豆包 (火山引擎)" "智谱 AI" "万界数据")
+declare -a PROVIDER_URLS=(
+    "https://api.minimaxi.com/anthropic"
+    "https://ark.cn-beijing.volces.com/api/coding"
+    "https://open.bigmodel.cn/api/anthropic"
+    "https://maas-openapi.wanjiedata.com/api/anthropic"
+)
+declare -a PROVIDER_KEY_URLS=(
+    "https://platform.minimaxi.com"
+    "https://console.volcengine.com/ark"
+    "https://open.bigmodel.cn"
+    "https://data.wanjiehuyu.com"
+)
+```
+
+### Model Configuration by Provider
+
+#### MiniMax Models
 | Model ID | Name | Description |
 |----------|------|-------------|
-| `claude-sonnet-4-20250514` | Claude Sonnet 4 | 性价比之选，推荐日常使用 (Default) |
-| `claude-sonnet-4-5-20250929` | Claude Sonnet 4.5 | 增强版 Sonnet，更强推理能力 |
-| `claude-haiku-4-5-20251001` | Claude Haiku 4.5 | 快速响应，适合简单任务 |
-| `claude-opus-4-1-20250805` | Claude Opus 4.1 | 强大性能，适合复杂任务 |
-| `claude-opus-4-5-20251101` | Claude Opus 4.5 | 旗舰模型，最强性能 |
+| `M2.1-flash` | M2.1 Flash | 免费模型，推荐日常使用 (Default) |
+| `M2.1-standard` | M2.1 Standard | 标准模型，更强性能 |
+
+#### Doubao Models
+| Model ID | Name | Description |
+|----------|------|-------------|
+| `ark-code-latest` | Ark Code Latest | 默认模型 (Default) |
+| Custom | - | 支持用户自定义输入 |
+
+#### Zhipu Models
+| Model ID | Name | Description |
+|----------|------|-------------|
+| `GLM-4.7` | GLM-4.7 | 推荐使用 (Default) |
+| `GLM-4.5-Air` | GLM-4.5 Air | 快速响应 |
+
+#### Wanjie Models (Claude)
+| Model ID | Name | Description |
+|----------|------|-------------|
+| `claude-sonnet-4-20250514` | Claude Sonnet 4 | 性价比之选 (Default) |
+| `claude-sonnet-4-5-20250929` | Claude Sonnet 4.5 | 增强版 Sonnet |
+| `claude-haiku-4-5-20251001` | Claude Haiku 4.5 | 快速响应 |
+| `claude-opus-4-1-20250805` | Claude Opus 4.1 | 复杂任务 |
+| `claude-opus-4-5-20251101` | Claude Opus 4.5 | 旗舰模型 |
 
 ### Model Mapping Rules
 
-| Variable | Logic |
-|----------|-------|
-| `ANTHROPIC_MODEL` | User's selected model |
-| `ANTHROPIC_DEFAULT_HAIKU_MODEL` | Always `claude-haiku-4-5-20251001` |
-| `ANTHROPIC_DEFAULT_SONNET_MODEL` | Use 4.5 if user selected Sonnet 4.5, otherwise Sonnet 4 |
-| `ANTHROPIC_DEFAULT_OPUS_MODEL` | Use 4.5 if user selected Opus 4.5, otherwise Opus 4.1 |
+| Provider | Haiku Mapping | Sonnet Mapping | Opus Mapping |
+|----------|---------------|----------------|--------------|
+| MiniMax | (empty) | (empty) | (empty) |
+| Doubao | User's model | User's model | User's model |
+| Zhipu | `GLM-4.5-Air` | `GLM-4.7` | `GLM-4.7` |
+| Wanjie | `claude-haiku-4-5-20251001` | Based on selection | Based on selection |
 
 ### settings.json Template
 
@@ -227,8 +277,8 @@ if ($errors) { $errors | ForEach-Object { Write-Error $_ } }
   },
   "env": {
     "ANTHROPIC_AUTH_TOKEN": "<API_KEY>",
-    "ANTHROPIC_BASE_URL": "https://maas-openapi.wanjiedata.com/api/anthropic",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5-20251001",
+    "ANTHROPIC_BASE_URL": "<PROVIDER_URL>",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "<MAPPED_VALUE>",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "<MAPPED_VALUE>",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "<MAPPED_VALUE>",
     "ANTHROPIC_MODEL": "<SELECTED_MODEL>",
@@ -238,16 +288,18 @@ if ($errors) { $errors | ForEach-Object { Write-Error $_ } }
 }
 ```
 
+Note: For MiniMax provider, the Haiku/Sonnet/Opus mapping fields are omitted or set to empty strings.
+
 ## China Network Acceleration
 
 ### Network Sources
 
 | Component | URL | China Mirror |
 |-----------|-----|--------------|
-| Claude API | `https://maas-openapi.wanjiedata.com/api/anthropic` | Built-in (万界数据) |
 | NPM Registry | `https://registry.npmmirror.com` | 淘宝镜像 |
 | Node.js (nvm) | `https://npmmirror.com/mirrors/node` | npmmirror |
 | GitHub Raw | `https://raw.githubusercontent.com/...` | ghproxy.net |
+| nvm Git Clone | `https://ghproxy.net/https://github.com/nvm-sh/nvm.git` | NVM_SOURCE |
 
 ### GitHub Mirror Strategy
 
@@ -271,6 +323,9 @@ USE_MIRROR=false curl -fsSL ... | bash
 
 # Auto-detect (default)
 curl -fsSL ... | bash
+
+# Non-interactive with provider selection
+NONINTERACTIVE=true PROVIDER=1 ANTHROPIC_API_KEY=xxx ANTHROPIC_MODEL=M2.1-flash curl -fsSL ... | bash
 ```
 
 ## CI/CD Pipeline
@@ -305,11 +360,21 @@ When the user requests "签入推送" (commit and push):
 
 ## Common Tasks
 
-### Adding a New Model
+### Adding a New Provider
 
-1. Add model to the selection menu in both scripts
+1. Add provider to `PROVIDER_NAMES`, `PROVIDER_URLS`, `PROVIDER_KEY_URLS` arrays in install.sh
+2. Add provider to `$script:Providers` array in install.ps1
+3. Add model arrays for the new provider
+4. Update model mapping logic in `calculate_model_mappings()` / `Get-ModelMappings`
+5. Update AGENTS.md provider table
+6. Update README.md provider table
+7. Run E2E tests to verify
+
+### Adding a New Model to Existing Provider
+
+1. Add model to the provider's model arrays in both scripts
 2. Update model mapping logic if needed
-3. Update AGENTS.md model table
+3. Update AGENTS.md model table for that provider
 4. Update README.md model table
 5. Run E2E tests to verify
 
@@ -350,8 +415,8 @@ Since there are no binary builds, releases are simply for versioning:
 
 ```bash
 # Create version tag
-git tag -a v2.0.0 -m "v2.0.0: Pure shell script installer"
-git push origin v2.0.0
+git tag -a v3.0.0 -m "v3.0.0: Multi-provider support"
+git push origin v3.0.0
 ```
 
 The scripts are always fetched from `main` branch, so users always get the latest version.

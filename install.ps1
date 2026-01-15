@@ -100,42 +100,119 @@ $script:GitHubMirrors = @(
     "https://gh-proxy.com"
 )
 
-# 模型列表
-$script:Models = @(
+# ============================================================================
+# 服务商配置
+# ============================================================================
+
+$script:Providers = @(
     @{
-        ID          = "claude-sonnet-4-20250514"
-        Name        = "Claude Sonnet 4"
+        ID          = "minimax"
+        Name        = "MiniMax"
         Tag         = "[推荐]"
-        Description = "性价比之选，日常使用"
-        Family      = "sonnet"
+        Description = "免费额度，快速响应"
+        BaseUrl     = "https://api.minimaxi.com/anthropic"
+        ApiKeyUrl   = "https://platform.minimaxi.com"
+        Models      = @(
+            @{
+                ID          = "M2.1-flash"
+                Name        = "M2.1-flash"
+                Tag         = "[推荐]"
+                Description = "免费使用，快速响应"
+            },
+            @{
+                ID          = "M2.1-standard"
+                Name        = "M2.1-standard"
+                Tag         = ""
+                Description = "标准版，更强能力"
+            }
+        )
+        CustomModel = $false
     },
     @{
-        ID          = "claude-sonnet-4-5-20250929"
-        Name        = "Claude Sonnet 4.5"
+        ID          = "doubao"
+        Name        = "豆包 (火山引擎)"
         Tag         = ""
-        Description = "增强版，更强推理能力"
-        Family      = "sonnet"
+        Description = "字节跳动，稳定可靠"
+        BaseUrl     = "https://ark.cn-beijing.volces.com/api/coding"
+        ApiKeyUrl   = "https://console.volcengine.com/ark"
+        Models      = @(
+            @{
+                ID          = "ark-code-latest"
+                Name        = "ark-code-latest"
+                Tag         = "[默认]"
+                Description = "最新编程模型"
+            }
+        )
+        CustomModel = $true
     },
     @{
-        ID          = "claude-haiku-4-5-20251001"
-        Name        = "Claude Haiku 4.5"
+        ID          = "zhipu"
+        Name        = "智谱 AI"
         Tag         = ""
-        Description = "快速响应，适合简单任务"
-        Family      = "haiku"
+        Description = "国产大模型，性价比高"
+        BaseUrl     = "https://open.bigmodel.cn/api/anthropic"
+        ApiKeyUrl   = "https://open.bigmodel.cn"
+        Models      = @(
+            @{
+                ID          = "GLM-4.7"
+                Name        = "GLM-4.7"
+                Tag         = "[推荐]"
+                Description = "最新模型，能力强大"
+            },
+            @{
+                ID          = "GLM-4.5-Air"
+                Name        = "GLM-4.5-Air"
+                Tag         = ""
+                Description = "快速响应，适合简单任务"
+            }
+        )
+        CustomModel = $false
     },
     @{
-        ID          = "claude-opus-4-1-20250805"
-        Name        = "Claude Opus 4.1"
+        ID          = "wanjie"
+        Name        = "万界数据"
         Tag         = ""
-        Description = "强大性能，适合复杂任务"
-        Family      = "opus"
-    },
-    @{
-        ID          = "claude-opus-4-5-20251101"
-        Name        = "Claude Opus 4.5"
-        Tag         = ""
-        Description = "旗舰模型，最强性能"
-        Family      = "opus"
+        Description = "Claude 原生模型代理"
+        BaseUrl     = "https://maas-openapi.wanjiedata.com/api/anthropic"
+        ApiKeyUrl   = "https://data.wanjiehuyu.com"
+        Models      = @(
+            @{
+                ID          = "claude-sonnet-4-20250514"
+                Name        = "Claude Sonnet 4"
+                Tag         = "[推荐]"
+                Description = "性价比之选，日常使用"
+                Family      = "sonnet"
+            },
+            @{
+                ID          = "claude-sonnet-4-5-20250929"
+                Name        = "Claude Sonnet 4.5"
+                Tag         = ""
+                Description = "增强版，更强推理能力"
+                Family      = "sonnet"
+            },
+            @{
+                ID          = "claude-haiku-4-5-20251001"
+                Name        = "Claude Haiku 4.5"
+                Tag         = ""
+                Description = "快速响应，适合简单任务"
+                Family      = "haiku"
+            },
+            @{
+                ID          = "claude-opus-4-1-20250805"
+                Name        = "Claude Opus 4.1"
+                Tag         = ""
+                Description = "强大性能，适合复杂任务"
+                Family      = "opus"
+            },
+            @{
+                ID          = "claude-opus-4-5-20251101"
+                Name        = "Claude Opus 4.5"
+                Tag         = ""
+                Description = "旗舰模型，最强性能"
+                Family      = "opus"
+            }
+        )
+        CustomModel = $false
     }
 )
 
@@ -186,8 +263,8 @@ function Show-Banner {
     Write-Host "Claude Code Installer" -ForegroundColor White -NoNewline
     Write-Host "                       |" -ForegroundColor Cyan
     Write-Host "|  " -ForegroundColor Cyan -NoNewline
-    Write-Host "Wanjie Data (万界数据)" -ForegroundColor Yellow -NoNewline
-    Write-Host "                    |" -ForegroundColor Cyan
+    Write-Host "Easy Install Claude" -ForegroundColor Yellow -NoNewline
+    Write-Host "                       |" -ForegroundColor Cyan
     Write-Host "+----------------------------------------------+" -ForegroundColor Cyan
     Write-Host ""
 }
@@ -214,6 +291,12 @@ function Show-Help {
     Write-Host "环境变量:" -ForegroundColor Yellow
     Write-Host "  USE_MIRROR=true   强制使用国内镜像"
     Write-Host "  USE_MIRROR=false  强制直连 GitHub"
+    Write-Host ""
+    Write-Host "支持的服务商:" -ForegroundColor Yellow
+    Write-Host "  1. MiniMax       - 免费额度，快速响应"
+    Write-Host "  2. 豆包 (火山引擎) - 字节跳动，稳定可靠"
+    Write-Host "  3. 智谱 AI       - 国产大模型，性价比高"
+    Write-Host "  4. 万界数据     - Claude 原生模型代理"
     Write-Host ""
 }
 
@@ -431,10 +514,52 @@ function Install-ClaudeCodePackage {
 # 配置向导
 # ============================================================================
 
+function Select-Provider {
+    Write-Host ""
+    Write-Host "请选择 API 服务商:" -ForegroundColor Yellow
+    Write-Host ""
+    
+    # 显示服务商列表
+    for ($i = 0; $i -lt $script:Providers.Count; $i++) {
+        $provider = $script:Providers[$i]
+        $num = $i + 1
+        
+        # 构建显示行
+        $tag = if ($provider.Tag) { " $($provider.Tag)" } else { "" }
+        
+        Write-Host "  $num. " -ForegroundColor Cyan -NoNewline
+        Write-Host "$($provider.Name)" -ForegroundColor White -NoNewline
+        Write-Host "$tag " -ForegroundColor Green -NoNewline
+        Write-Host "- $($provider.Description)" -ForegroundColor DarkGray
+    }
+    
+    Write-Host ""
+    $choice = Read-Host "请输入数字 [1-$($script:Providers.Count)]，默认 1"
+    
+    # 默认选择第一个
+    if ([string]::IsNullOrWhiteSpace($choice)) {
+        $choice = "1"
+    }
+    
+    # 验证输入
+    $index = 0
+    if (-not [int]::TryParse($choice, [ref]$index) -or $index -lt 1 -or $index -gt $script:Providers.Count) {
+        Write-Warn "无效选择，使用默认服务商"
+        $index = 1
+    }
+    
+    $selected = $script:Providers[$index - 1]
+    Write-Success "已选择: $($selected.Name)"
+    
+    return $selected
+}
+
 function Read-ApiKey {
+    param($Provider)
+    
     Write-Host ""
     Write-Host "请输入您的 API Key:" -ForegroundColor Yellow
-    Write-Host "(从 万界数据 获取: https://data.wanjie.info)" -ForegroundColor DarkGray
+    Write-Host "(从 $($Provider.Name) 获取: $($Provider.ApiKeyUrl))" -ForegroundColor DarkGray
     Write-Host ""
     
     # 尝试读取现有配置
@@ -459,37 +584,49 @@ function Read-ApiKey {
         return $existingKey
     }
     
-    # 验证 key 格式
+    # 验证 key 不为空
     if ([string]::IsNullOrWhiteSpace($key)) {
         Write-Err "API Key 不能为空"
-        return Read-ApiKey
+        return Read-ApiKey -Provider $Provider
     }
     
     return $key.Trim()
 }
 
 function Select-Model {
+    param($Provider)
+    
     Write-Host ""
     Write-Host "请选择默认模型:" -ForegroundColor Yellow
     Write-Host ""
     
+    $models = $Provider.Models
+    
     # 显示模型列表
-    for ($i = 0; $i -lt $script:Models.Count; $i++) {
-        $model = $script:Models[$i]
+    for ($i = 0; $i -lt $models.Count; $i++) {
+        $model = $models[$i]
         $num = $i + 1
         
         # 构建显示行
-        $tag = if ($model.Tag) { " $($model.Tag)" } else { "       " }
+        $tag = if ($model.Tag) { " $($model.Tag)" } else { "" }
         
         Write-Host "  $num. " -ForegroundColor Cyan -NoNewline
         Write-Host "$($model.Name)" -ForegroundColor White -NoNewline
         Write-Host "$tag " -ForegroundColor Green -NoNewline
-        Write-Host "$($model.Description)" -ForegroundColor DarkGray
-        Write-Host "     ($($model.ID))" -ForegroundColor DarkGray
+        Write-Host "- $($model.Description)" -ForegroundColor DarkGray
+    }
+    
+    # 如果支持自定义模型，显示选项
+    if ($Provider.CustomModel) {
+        $customNum = $models.Count + 1
+        Write-Host "  $customNum. " -ForegroundColor Cyan -NoNewline
+        Write-Host "[自定义输入]" -ForegroundColor Yellow -NoNewline
+        Write-Host " - 输入自定义模型 ID" -ForegroundColor DarkGray
     }
     
     Write-Host ""
-    $choice = Read-Host "请输入数字 [1-$($script:Models.Count)]，默认 1"
+    $maxChoice = if ($Provider.CustomModel) { $models.Count + 1 } else { $models.Count }
+    $choice = Read-Host "请输入数字 [1-$maxChoice]，默认 1"
     
     # 默认选择第一个
     if ([string]::IsNullOrWhiteSpace($choice)) {
@@ -498,54 +635,105 @@ function Select-Model {
     
     # 验证输入
     $index = 0
-    if (-not [int]::TryParse($choice, [ref]$index) -or $index -lt 1 -or $index -gt $script:Models.Count) {
+    if (-not [int]::TryParse($choice, [ref]$index) -or $index -lt 1 -or $index -gt $maxChoice) {
         Write-Warn "无效选择，使用默认模型"
         $index = 1
     }
     
-    $selected = $script:Models[$index - 1]
+    # 处理自定义模型
+    if ($Provider.CustomModel -and $index -eq $maxChoice) {
+        Write-Host ""
+        $customModelId = Read-Host "请输入模型 ID (默认: $($models[0].ID))"
+        if ([string]::IsNullOrWhiteSpace($customModelId)) {
+            $customModelId = $models[0].ID
+        }
+        $selectedModel = @{
+            ID          = $customModelId.Trim()
+            Name        = $customModelId.Trim()
+            Tag         = ""
+            Description = "自定义模型"
+        }
+        Write-Success "已选择自定义模型: $($selectedModel.ID)"
+        return $selectedModel
+    }
+    
+    $selected = $models[$index - 1]
     Write-Success "已选择: $($selected.Name)"
     
     return $selected
 }
 
 function Get-ModelMappings {
-    param($SelectedModel)
+    param($Provider, $SelectedModel)
     
-    # 默认值
-    $haikuModel = "claude-haiku-4-5-20251001"
-    $sonnetModel = "claude-sonnet-4-20250514"
-    $opusModel = "claude-opus-4-1-20250805"
-    
-    # 根据选择的模型调整
-    switch ($SelectedModel.Family) {
-        "sonnet" {
-            if ($SelectedModel.ID -like "*4-5*") {
-                $sonnetModel = "claude-sonnet-4-5-20250929"
+    switch ($Provider.ID) {
+        "minimax" {
+            # MiniMax 不需要模型映射
+            return @{
+                Haiku  = ""
+                Sonnet = ""
+                Opus   = ""
             }
         }
-        "opus" {
-            if ($SelectedModel.ID -like "*4-5*") {
-                $opusModel = "claude-opus-4-5-20251101"
+        "doubao" {
+            # 豆包使用相同的模型
+            return @{
+                Haiku  = $SelectedModel.ID
+                Sonnet = $SelectedModel.ID
+                Opus   = $SelectedModel.ID
             }
         }
-    }
-    
-    return @{
-        Haiku  = $haikuModel
-        Sonnet = $sonnetModel
-        Opus   = $opusModel
+        "zhipu" {
+            # 智谱 AI 模型映射
+            return @{
+                Haiku  = "GLM-4.5-Air"
+                Sonnet = "GLM-4.7"
+                Opus   = "GLM-4.7"
+            }
+        }
+        "wanjie" {
+            # 万界数据保持原有逻辑
+            $haikuModel = "claude-haiku-4-5-20251001"
+            $sonnetModel = "claude-sonnet-4-20250514"
+            $opusModel = "claude-opus-4-1-20250805"
+            
+            # 根据选择的模型调整
+            if ($SelectedModel.Family -eq "sonnet") {
+                if ($SelectedModel.ID -like "*4-5*") {
+                    $sonnetModel = "claude-sonnet-4-5-20250929"
+                }
+            }
+            elseif ($SelectedModel.Family -eq "opus") {
+                if ($SelectedModel.ID -like "*4-5*") {
+                    $opusModel = "claude-opus-4-5-20251101"
+                }
+            }
+            
+            return @{
+                Haiku  = $haikuModel
+                Sonnet = $sonnetModel
+                Opus   = $opusModel
+            }
+        }
+        default {
+            return @{
+                Haiku  = ""
+                Sonnet = ""
+                Opus   = ""
+            }
+        }
     }
 }
 
 function Write-SettingsFile {
     param(
         [string]$ApiKey,
+        $Provider,
         $Model
     )
     
     # 获取模型映射
-    $mappings = Get-ModelMappings -SelectedModel $Model
+    $mappings = Get-ModelMappings -Provider $Provider -SelectedModel $Model
     
     # 构建配置对象
     $settings = @{
@@ -558,13 +746,13 @@ function Write-SettingsFile {
             "superpowers@superpowers-marketplace"      = $true
         }
         env            = @{
-            ANTHROPIC_AUTH_TOKEN                    = $ApiKey
-            ANTHROPIC_BASE_URL                      = "https://maas-openapi.wanjiedata.com/api/anthropic"
-            ANTHROPIC_DEFAULT_HAIKU_MODEL           = $mappings.Haiku
-            ANTHROPIC_DEFAULT_OPUS_MODEL            = $mappings.Opus
-            ANTHROPIC_DEFAULT_SONNET_MODEL          = $mappings.Sonnet
-            ANTHROPIC_MODEL                         = $Model.ID
-            API_TIMEOUT_MS                          = "3000000"
+            ANTHROPIC_AUTH_TOKEN                     = $ApiKey
+            ANTHROPIC_BASE_URL                       = $Provider.BaseUrl
+            ANTHROPIC_DEFAULT_HAIKU_MODEL            = $mappings.Haiku
+            ANTHROPIC_DEFAULT_OPUS_MODEL             = $mappings.Opus
+            ANTHROPIC_DEFAULT_SONNET_MODEL           = $mappings.Sonnet
+            ANTHROPIC_MODEL                          = $Model.ID
+            API_TIMEOUT_MS                           = "3000000"
             CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = 1
         }
     }
@@ -613,12 +801,18 @@ function Add-NpmToPath {
 # ============================================================================
 
 function Show-Completion {
+    param($Provider)
+    
     Write-Host ""
     Write-Host "+----------------------------------------------+" -ForegroundColor Green
     Write-Host "|  " -ForegroundColor Green -NoNewline
     Write-Host "Installation Complete!" -ForegroundColor White -NoNewline
     Write-Host "                      |" -ForegroundColor Green
     Write-Host "+----------------------------------------------+" -ForegroundColor Green
+    Write-Host ""
+    
+    Write-Host "服务商: " -ForegroundColor Yellow -NoNewline
+    Write-Host "$($Provider.Name)" -ForegroundColor Cyan
     Write-Host ""
     
     Write-Host "开始使用:" -ForegroundColor Yellow
@@ -661,14 +855,17 @@ function Invoke-ConfigOnly {
     }
     
     # 配置向导
-    Write-Step -Step 1 -Total 2 -Message "输入 API Key"
-    $apiKey = Read-ApiKey
+    Write-Step -Step 1 -Total 3 -Message "选择服务商"
+    $provider = Select-Provider
     
-    Write-Step -Step 2 -Total 2 -Message "选择模型"
-    $model = Select-Model
+    Write-Step -Step 2 -Total 3 -Message "输入 API Key"
+    $apiKey = Read-ApiKey -Provider $provider
+    
+    Write-Step -Step 3 -Total 3 -Message "选择模型"
+    $model = Select-Model -Provider $provider
     
     # 写入配置
-    Write-SettingsFile -ApiKey $apiKey -Model $model
+    Write-SettingsFile -ApiKey $apiKey -Provider $provider -Model $model
     
     Write-Host ""
     Write-Success "配置完成!"
@@ -682,7 +879,7 @@ function Invoke-ConfigOnly {
 function Invoke-FullInstall {
     Show-Banner
     
-    $totalSteps = 5
+    $totalSteps = 6
     $currentStep = 0
     
     # Step 1: 检测网络环境
@@ -730,25 +927,30 @@ function Invoke-FullInstall {
         Write-Info "跳过安装（已安装）"
     }
     
-    # Step 4: 配置 API Key
+    # Step 4: 选择服务商
+    $currentStep++
+    Write-Step -Step $currentStep -Total $totalSteps -Message "选择服务商"
+    $provider = Select-Provider
+    
+    # Step 5: 配置 API Key
     $currentStep++
     Write-Step -Step $currentStep -Total $totalSteps -Message "配置 API Key"
-    $apiKey = Read-ApiKey
+    $apiKey = Read-ApiKey -Provider $provider
     
-    # Step 5: 选择模型
+    # Step 6: 选择模型
     $currentStep++
     Write-Step -Step $currentStep -Total $totalSteps -Message "选择模型"
-    $model = Select-Model
+    $model = Select-Model -Provider $provider
     
     # 写入配置
     Write-Info "正在保存配置..."
-    Write-SettingsFile -ApiKey $apiKey -Model $model
+    Write-SettingsFile -ApiKey $apiKey -Provider $provider -Model $model
     
     # 确保 PATH 正确
     Add-NpmToPath
     
     # 完成
-    Show-Completion
+    Show-Completion -Provider $provider
 }
 
 # ============================================================================

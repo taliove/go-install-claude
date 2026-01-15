@@ -1,26 +1,35 @@
-# Claude Code 一键安装工具
+# Easy Install Claude
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blue?style=flat-square)](https://github.com/taliove/easy-install-claude)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
-专为国内用户设计的 Claude Code 一键安装工具，预配置万界数据代理，一行命令完成所有安装配置。
+专为国内用户设计的 Claude Code 一键安装工具，支持多个 AI 服务商，一行命令完成所有安装配置。
 
 ```
   ╔════════════════════════════════════════════╗
-  ║  Claude Code 一键安装工具                  ║
-  ║  ⚡ 万界数据 ⚡                            ║
+  ║  Easy Install Claude                       ║
+  ║  多服务商 | 一键安装 | 国内加速            ║
   ╚════════════════════════════════════════════╝
 ```
 
 ## ✨ 特性
 
 - 🚀 **一键安装** - 自动安装 Node.js、配置 NPM 镜像、安装 Claude Code
-- 🔧 **预设万界代理** - 无需手动配置代理地址
-- 📦 **多模型支持** - 支持选择 Claude Sonnet/Opus/Haiku 系列
-- 🔄 **随时重配** - 使用 `--config` 参数重新配置 API Key 和模型
+- 🔌 **多服务商** - 支持 MiniMax、豆包、智谱 AI、万界数据
+- 📦 **多模型支持** - 每个服务商提供多种模型选择
+- 🔄 **随时重配** - 使用 `--config` 参数重新配置服务商、API Key 和模型
 - 💻 **跨平台支持** - Windows、Linux、macOS 全平台覆盖
 - 🔑 **安全配置** - API Key 自动写入 `~/.claude/settings.json`
 - 🌐 **网络加速** - 自动检测并使用国内镜像加速
+
+## 🔌 支持的服务商
+
+| 服务商 | Base URL | 模型 | 获取 API Key |
+|--------|----------|------|--------------|
+| **MiniMax** ⭐ | `api.minimaxi.com` | M2.1-flash (免费), M2.1-standard | [platform.minimaxi.com](https://platform.minimaxi.com) |
+| **豆包 (火山引擎)** | `ark.cn-beijing.volces.com` | ark-code-latest, 自定义 | [console.volcengine.com/ark](https://console.volcengine.com/ark) |
+| **智谱 AI** | `open.bigmodel.cn` | GLM-4.7, GLM-4.5-Air | [open.bigmodel.cn](https://open.bigmodel.cn) |
+| **万界数据** | `maas-openapi.wanjiedata.com` | Claude 全系列 | [data.wanjiehuyu.com](https://data.wanjiehuyu.com) |
 
 ## 📥 一键安装
 
@@ -54,7 +63,7 @@ iwr -useb https://raw.githubusercontent.com/taliove/easy-install-claude/main/boo
 
 ## 🔄 重新配置
 
-已安装用户可随时重新配置 API Key 和模型：
+已安装用户可随时重新配置服务商、API Key 和模型：
 
 #### Linux / macOS
 
@@ -69,15 +78,38 @@ curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-in
 Invoke-WebRequest -Uri "https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.ps1" -OutFile install.ps1; .\install.ps1 -Config
 ```
 
-## 🔧 支持的模型
+## 🔧 各服务商模型列表
+
+### MiniMax（推荐）
 
 | 模型 ID | 名称 | 说明 |
 |---------|------|------|
-| `claude-sonnet-4-20250514` | Claude Sonnet 4 | 性价比之选，推荐日常使用 ⭐ |
-| `claude-sonnet-4-5-20250929` | Claude Sonnet 4.5 | 增强版 Sonnet，更强推理能力 |
-| `claude-haiku-4-5-20251001` | Claude Haiku 4.5 | 快速响应，适合简单任务 |
-| `claude-opus-4-1-20250805` | Claude Opus 4.1 | 强大性能，适合复杂任务 |
-| `claude-opus-4-5-20251101` | Claude Opus 4.5 | 旗舰模型，最强性能 |
+| `M2.1-flash` | M2.1 Flash | 免费模型，推荐日常使用 ⭐ |
+| `M2.1-standard` | M2.1 Standard | 标准模型，更强性能 |
+
+### 豆包 (火山引擎)
+
+| 模型 ID | 名称 | 说明 |
+|---------|------|------|
+| `ark-code-latest` | Ark Code Latest | 默认模型 ⭐ |
+| 自定义 | - | 支持输入任意模型 ID |
+
+### 智谱 AI
+
+| 模型 ID | 名称 | 说明 |
+|---------|------|------|
+| `GLM-4.7` | GLM-4.7 | 推荐使用 ⭐ |
+| `GLM-4.5-Air` | GLM-4.5 Air | 快速响应 |
+
+### 万界数据 (Claude 原生)
+
+| 模型 ID | 名称 | 说明 |
+|---------|------|------|
+| `claude-sonnet-4-20250514` | Claude Sonnet 4 | 性价比之选 ⭐ |
+| `claude-sonnet-4-5-20250929` | Claude Sonnet 4.5 | 增强版 Sonnet |
+| `claude-haiku-4-5-20251001` | Claude Haiku 4.5 | 快速响应 |
+| `claude-opus-4-1-20250805` | Claude Opus 4.1 | 复杂任务 |
+| `claude-opus-4-5-20251101` | Claude Opus 4.5 | 旗舰模型 |
 
 ## 🎮 命令行选项
 
@@ -116,9 +148,19 @@ USE_MIRROR=true curl -fsSL <URL> | bash
 # 强制直连 GitHub（海外用户）
 USE_MIRROR=false curl -fsSL <URL> | bash
 
-# 自动检测（默认）
-curl -fsSL <URL> | bash
+# 非交互式安装（用于自动化）
+NONINTERACTIVE=true PROVIDER=1 ANTHROPIC_API_KEY=your-key ANTHROPIC_MODEL=M2.1-flash curl -fsSL <URL> | bash
 ```
+
+### 环境变量说明
+
+| 变量 | 说明 | 示例值 |
+|------|------|--------|
+| `USE_MIRROR` | 强制镜像模式 | `true`, `false`, `auto` |
+| `NONINTERACTIVE` | 非交互式模式 | `true` |
+| `PROVIDER` | 服务商选择 | `1`=MiniMax, `2`=豆包, `3`=智谱, `4`=万界 |
+| `ANTHROPIC_API_KEY` | API Key | `sk-xxx` |
+| `ANTHROPIC_MODEL` | 模型 ID | `M2.1-flash`, `GLM-4.7`, 等 |
 
 ## 📁 配置文件
 
@@ -136,11 +178,8 @@ curl -fsSL <URL> | bash
   },
   "env": {
     "ANTHROPIC_AUTH_TOKEN": "your-api-key",
-    "ANTHROPIC_BASE_URL": "https://maas-openapi.wanjiedata.com/api/anthropic",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5-20251001",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-1-20250805",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-20250514",
-    "ANTHROPIC_MODEL": "claude-sonnet-4-20250514",
+    "ANTHROPIC_BASE_URL": "https://api.minimaxi.com/anthropic",
+    "ANTHROPIC_MODEL": "M2.1-flash",
     "API_TIMEOUT_MS": "3000000",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1
   }
@@ -164,9 +203,17 @@ claude
 1. 检测/安装 Node.js 18+（使用 nvm/winget）
 2. 配置 npm 使用淘宝镜像
 3. 安装 Claude Code CLI
-4. 交互式输入 API Key 和选择模型
-5. 写入配置到 `~/.claude/settings.json`
-6. 配置 PATH 环境变量
+4. 交互式选择服务商
+5. 输入 API Key 和选择模型
+6. 写入配置到 `~/.claude/settings.json`
+7. 配置 PATH 环境变量
+
+### Q: 如何切换服务商？
+
+重新运行配置命令：
+```bash
+curl -fsSL <URL> | bash -s -- --config
+```
 
 ### Q: Node.js 安装失败
 
@@ -201,10 +248,6 @@ curl -fsSL <URL> | bash -s -- --config
 vim ~/.claude/settings.json
 ```
 
-### Q: 如何获取 API Key？
-
-访问 [万界数据](https://www.wanjiedata.com) 注册并获取 API Key。
-
 ## 📄 开源协议
 
 MIT License
@@ -212,5 +255,8 @@ MIT License
 ## 🙏 致谢
 
 - [Anthropic](https://anthropic.com) - Claude AI
-- [万界数据](https://www.wanjiedata.com) - API 代理服务
+- [MiniMax](https://platform.minimaxi.com) - M2.1 系列模型
+- [火山引擎](https://www.volcengine.com) - 豆包大模型
+- [智谱 AI](https://open.bigmodel.cn) - GLM 系列模型
+- [万界数据](https://www.wanjiedata.com) - Claude API 代理
 - [nvm](https://github.com/nvm-sh/nvm) - Node Version Manager

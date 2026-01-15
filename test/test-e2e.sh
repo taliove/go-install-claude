@@ -7,8 +7,8 @@
 #   2. 环境检测
 #   3. 安装 Node.js (via nvm)
 #   4. 安装 Claude Code
-#   5. 配置万界代理
-#   6. 验证万界代理配置
+#   5. 配置服务商 (多服务商支持)
+#   6. 验证配置
 #
 # 用法:
 #   docker build -t claude-installer-test -f test/Dockerfile .
@@ -16,6 +16,7 @@
 #
 # 环境变量:
 #   TEST_API_KEY    测试用 API Key (可选)
+#   TEST_PROVIDER   测试服务商 1-4 (可选，默认 1=MiniMax)
 #   SKIP_INSTALL    跳过安装，仅验证配置 (可选)
 # ============================================================================
 
@@ -33,6 +34,16 @@ NC='\033[0m'
 # 计数器
 TESTS_PASSED=0
 TESTS_FAILED=0
+
+# 服务商配置
+declare -a PROVIDER_NAMES=("MiniMax" "豆包 (火山引擎)" "智谱 AI" "万界数据")
+declare -a PROVIDER_URLS=(
+    "https://api.minimaxi.com/anthropic"
+    "https://ark.cn-beijing.volces.com/api/coding"
+    "https://open.bigmodel.cn/api/anthropic"
+    "https://maas-openapi.wanjiedata.com/api/anthropic"
+)
+declare -a PROVIDER_DEFAULT_MODELS=("M2.1-flash" "ark-code-latest" "GLM-4.7" "claude-sonnet-4-20250514")
 
 # 测试函数
 pass() { 
@@ -226,14 +237,19 @@ test_claude_code_installation() {
 }
 
 # ============================================================================
-# 测试 5: 配置万界代理
+# 测试 5: 配置服务商
 # ============================================================================
-test_wanjie_configuration() {
-    step "Test 5: 配置万界代理"
+test_provider_configuration() {
+    step "Test 5: 配置服务商"
+    
+    # 测试服务商 (默认 MiniMax)
+    local provider_idx=$((${TEST_PROVIDER:-1} - 1))
+    local provider_name="${PROVIDER_NAMES[$provider_idx]}"
+    local provider_url="${PROVIDER_URLS[$provider_idx]}"
+    local provider_model="${PROVIDER_DEFAULT_MODELS[$provider_idx]}"
     
     # 设置测试 API Key
-    local TEST_API_KEY="${TEST_API_KEY:-sk-test-key-for-e2e-testing}"
-    local TEST_MODEL="claude-sonnet-4-20250514"
+    local TEST_API_KEY="${TEST_API_KEY:-test-api-key-for-e2e-testing}"
     
     local CLAUDE_DIR="$HOME/.claude"
     local SETTINGS_FILE="$CLAUDE_DIR/settings.json"
@@ -241,13 +257,16 @@ test_wanjie_configuration() {
     # 创建配置目录
     mkdir -p "$CLAUDE_DIR"
     
-    # 定义期望的配置
-    local WANJIE_BASE_URL="https://maas-openapi.wanjiedata.com/api/anthropic"
+    info "测试服务商: $provider_name"
+    info "Base URL: $provider_url"
+    info "默认模型: $provider_model"
     
     info "写入配置文件..."
     
-    # 写入配置
-    cat > "$SETTINGS_FILE" << EOF
+    # 根据服务商写入不同的配置
+    if [ "$provider_idx" -eq 0 ]; then
+        # MiniMax: 不需要模型映射
+        cat > "$SETTINGS_FILE" << EOF
 {
   "enabledPlugins": {
     "commit-commands@claude-plugins-official": true,
@@ -259,16 +278,58 @@ test_wanjie_configuration() {
   },
   "env": {
     "ANTHROPIC_AUTH_TOKEN": "${TEST_API_KEY}",
-    "ANTHROPIC_BASE_URL": "${WANJIE_BASE_URL}",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5-20251001",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-1-20250805",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-20250514",
-    "ANTHROPIC_MODEL": "${TEST_MODEL}",
+    "ANTHROPIC_BASE_URL": "${provider_url}",
+    "ANTHROPIC_MODEL": "${provider_model}",
     "API_TIMEOUT_MS": "3000000",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1
   }
 }
 EOF
+    else
+        # 其他服务商: 需要模型映射
+        local haiku_model sonnet_model opus_model
+        
+        case $provider_idx in
+            1) # 豆包
+                haiku_model="$provider_model"
+                sonnet_model="$provider_model"
+                opus_model="$provider_model"
+                ;;
+            2) # 智谱
+                haiku_model="GLM-4.5-Air"
+                sonnet_model="GLM-4.7"
+                opus_model="GLM-4.7"
+                ;;
+            3) # 万界
+                haiku_model="claude-haiku-4-5-20251001"
+                sonnet_model="claude-sonnet-4-20250514"
+                opus_model="claude-opus-4-1-20250805"
+                ;;
+        esac
+        
+        cat > "$SETTINGS_FILE" << EOF
+{
+  "enabledPlugins": {
+    "commit-commands@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true,
+    "github@claude-plugins-official": true,
+    "planning-with-files@planning-with-files": true,
+    "superpowers@superpowers-marketplace": true
+  },
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "${TEST_API_KEY}",
+    "ANTHROPIC_BASE_URL": "${provider_url}",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "${haiku_model}",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "${opus_model}",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "${sonnet_model}",
+    "ANTHROPIC_MODEL": "${provider_model}",
+    "API_TIMEOUT_MS": "3000000",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1
+  }
+}
+EOF
+    fi
     
     if [ -f "$SETTINGS_FILE" ]; then
         pass "配置文件已创建: $SETTINGS_FILE"
@@ -291,13 +352,16 @@ EOF
 }
 
 # ============================================================================
-# 测试 6: 验证万界代理配置
+# 测试 6: 验证配置
 # ============================================================================
-test_wanjie_verification() {
-    step "Test 6: 验证万界代理配置"
+test_configuration_verification() {
+    step "Test 6: 验证服务商配置"
+    
+    local provider_idx=$((${TEST_PROVIDER:-1} - 1))
+    local provider_name="${PROVIDER_NAMES[$provider_idx]}"
+    local provider_url="${PROVIDER_URLS[$provider_idx]}"
     
     local SETTINGS_FILE="$HOME/.claude/settings.json"
-    local WANJIE_BASE_URL="https://maas-openapi.wanjiedata.com/api/anthropic"
     
     if [ ! -f "$SETTINGS_FILE" ]; then
         fail "配置文件不存在"
@@ -305,10 +369,10 @@ test_wanjie_verification() {
     fi
     
     # 验证 ANTHROPIC_BASE_URL
-    if grep -q "$WANJIE_BASE_URL" "$SETTINGS_FILE"; then
-        pass "ANTHROPIC_BASE_URL 正确设置为万界代理"
+    if grep -q "$provider_url" "$SETTINGS_FILE"; then
+        pass "ANTHROPIC_BASE_URL 正确设置为 $provider_name"
     else
-        fail "ANTHROPIC_BASE_URL 未设置为万界代理"
+        fail "ANTHROPIC_BASE_URL 未正确设置"
         cat "$SETTINGS_FILE"
         return 1
     fi
@@ -327,16 +391,20 @@ test_wanjie_verification() {
         fail "ANTHROPIC_MODEL 未配置"
     fi
     
-    # 验证默认模型映射
-    local all_models=true
-    grep -q "ANTHROPIC_DEFAULT_HAIKU_MODEL" "$SETTINGS_FILE" || all_models=false
-    grep -q "ANTHROPIC_DEFAULT_SONNET_MODEL" "$SETTINGS_FILE" || all_models=false
-    grep -q "ANTHROPIC_DEFAULT_OPUS_MODEL" "$SETTINGS_FILE" || all_models=false
-    
-    if [ "$all_models" = true ]; then
-        pass "所有默认模型映射已配置"
+    # 验证模型映射 (MiniMax 不需要)
+    if [ "$provider_idx" -ne 0 ]; then
+        local all_models=true
+        grep -q "ANTHROPIC_DEFAULT_HAIKU_MODEL" "$SETTINGS_FILE" || all_models=false
+        grep -q "ANTHROPIC_DEFAULT_SONNET_MODEL" "$SETTINGS_FILE" || all_models=false
+        grep -q "ANTHROPIC_DEFAULT_OPUS_MODEL" "$SETTINGS_FILE" || all_models=false
+        
+        if [ "$all_models" = true ]; then
+            pass "所有默认模型映射已配置"
+        else
+            fail "默认模型映射不完整"
+        fi
     else
-        fail "默认模型映射不完整"
+        pass "MiniMax 不需要模型映射"
     fi
     
     # 验证插件配置
@@ -383,10 +451,43 @@ test_claude_execution() {
     
     # 验证配置是否被读取
     if [ -f "$HOME/.claude/settings.json" ]; then
-        pass "配置文件存在，Claude 可读取万界代理配置"
+        pass "配置文件存在，Claude 可读取配置"
     else
         fail "配置文件不存在"
     fi
+}
+
+# ============================================================================
+# 测试 8: 多服务商配置测试
+# ============================================================================
+test_multi_provider() {
+    step "Test 8: 多服务商配置验证"
+    
+    info "验证所有服务商的 Base URL 配置..."
+    
+    # 验证所有服务商 URL 格式
+    for i in "${!PROVIDER_URLS[@]}"; do
+        local url="${PROVIDER_URLS[$i]}"
+        local name="${PROVIDER_NAMES[$i]}"
+        
+        if [[ "$url" =~ ^https:// ]]; then
+            pass "$name URL 格式正确: $url"
+        else
+            fail "$name URL 格式错误: $url"
+        fi
+    done
+    
+    # 验证默认模型存在
+    for i in "${!PROVIDER_DEFAULT_MODELS[@]}"; do
+        local model="${PROVIDER_DEFAULT_MODELS[$i]}"
+        local name="${PROVIDER_NAMES[$i]}"
+        
+        if [ -n "$model" ]; then
+            pass "$name 默认模型已配置: $model"
+        else
+            fail "$name 默认模型未配置"
+        fi
+    done
 }
 
 # ============================================================================
@@ -395,8 +496,15 @@ test_claude_execution() {
 main() {
     echo ""
     echo -e "${CYAN}╔════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║  ${BOLD}Claude Code E2E 测试套件${NC}${CYAN}                      ║${NC}"
+    echo -e "${CYAN}║  ${BOLD}Easy Install Claude - E2E 测试套件${NC}${CYAN}            ║${NC}"
+    echo -e "${CYAN}║  ${BOLD}多服务商支持${NC}${CYAN}                                  ║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    # 显示测试配置
+    local provider_idx=$((${TEST_PROVIDER:-1} - 1))
+    info "测试服务商: ${PROVIDER_NAMES[$provider_idx]}"
+    info "SKIP_INSTALL: ${SKIP_INSTALL:-false}"
     echo ""
     
     # 运行所有测试
@@ -404,9 +512,10 @@ main() {
     test_environment_detection
     test_nodejs_installation
     test_claude_code_installation
-    test_wanjie_configuration
-    test_wanjie_verification
+    test_provider_configuration
+    test_configuration_verification
     test_claude_execution
+    test_multi_provider
     
     # 汇总
     echo ""

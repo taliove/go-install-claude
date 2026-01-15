@@ -85,23 +85,9 @@ if (-not $downloadSuccess -or [string]::IsNullOrEmpty($scriptContent)) {
     exit 1
 }
 
-# Save to temp file and execute (ensures correct encoding)
-$tempFile = [System.IO.Path]::GetTempFileName() -replace '\.tmp$', '.ps1'
+# Execute the script content directly in memory
+# This bypasses Windows execution policy restrictions on script files
+Write-Host "[i] Running installer..." -ForegroundColor Cyan
+Write-Host ""
 
-try {
-    # Write with UTF-8 BOM for Windows PowerShell compatibility
-    $utf8BOM = New-Object System.Text.UTF8Encoding $true
-    [System.IO.File]::WriteAllText($tempFile, $scriptContent, $utf8BOM)
-    
-    Write-Host "[i] Running installer..." -ForegroundColor Cyan
-    Write-Host ""
-    
-    # Execute the script
-    & $tempFile
-}
-finally {
-    # Clean up temp file
-    if (Test-Path $tempFile) {
-        Remove-Item $tempFile -Force -ErrorAction SilentlyContinue
-    }
-}
+Invoke-Expression $scriptContent

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Claude Code 一键安装脚本
+# Claude Code 一键安装脚本 - Easy Install Claude
 #
 # 国内用户（推荐，使用加速镜像）:
 #   curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.sh | bash
@@ -14,6 +14,9 @@
 #   USE_MIRROR=true   强制使用国内镜像加速
 #   USE_MIRROR=false  强制直连 GitHub（海外用户）
 #   USE_MIRROR=auto   自动检测（默认）
+#   PROVIDER=1-4      预设服务商（1=MiniMax, 2=豆包, 3=智谱, 4=万界）
+#   ANTHROPIC_API_KEY 预设 API Key
+#   ANTHROPIC_MODEL   预设模型
 
 set -e
 
@@ -57,39 +60,106 @@ USE_MIRROR="${USE_MIRROR:-auto}"
 MIRROR_MODE=false
 ACTIVE_MIRROR=""
 
-# 万界数据 API 配置
-WANJIE_BASE_URL="https://maas-openapi.wanjiedata.com/api/anthropic"
-
 # 非交互式模式（用于自动化测试）
-# 设置以下环境变量可跳过交互输入:
-#   ANTHROPIC_API_KEY=sk-xxx   预设 API Key
-#   ANTHROPIC_MODEL=claude-sonnet-4-20250514  预设模型
 NONINTERACTIVE="${NONINTERACTIVE:-false}"
 
-# 模型列表
-declare -a MODEL_IDS=(
+# ============================================================================
+# 服务商配置
+# ============================================================================
+
+# 服务商列表
+declare -a PROVIDER_NAMES=(
+    "MiniMax"
+    "豆包 (火山引擎)"
+    "智谱 AI"
+    "万界数据"
+)
+
+declare -a PROVIDER_URLS=(
+    "https://api.minimaxi.com/anthropic"
+    "https://ark.cn-beijing.volces.com/api/coding"
+    "https://open.bigmodel.cn/api/anthropic"
+    "https://maas-openapi.wanjiedata.com/api/anthropic"
+)
+
+declare -a PROVIDER_KEY_URLS=(
+    "https://platform.minimaxi.com"
+    "https://console.volcengine.com/ark"
+    "https://open.bigmodel.cn"
+    "https://data.wanjiehuyu.com"
+)
+
+# MiniMax 模型
+declare -a MINIMAX_MODEL_IDS=(
+    "M2.1-flash"
+    "M2.1-standard"
+)
+declare -a MINIMAX_MODEL_NAMES=(
+    "M2.1-flash"
+    "M2.1-standard"
+)
+declare -a MINIMAX_MODEL_DESCS=(
+    "[推荐] 免费使用"
+    "标准版"
+)
+
+# 豆包模型（支持自定义）
+declare -a DOUBAO_MODEL_IDS=(
+    "ark-code-latest"
+    "__custom__"
+)
+declare -a DOUBAO_MODEL_NAMES=(
+    "ark-code-latest"
+    "自定义模型"
+)
+declare -a DOUBAO_MODEL_DESCS=(
+    "[默认] 最新代码模型"
+    "输入自定义模型名称"
+)
+
+# 智谱模型
+declare -a ZHIPU_MODEL_IDS=(
+    "GLM-4.7"
+    "GLM-4.5-Air"
+)
+declare -a ZHIPU_MODEL_NAMES=(
+    "GLM-4.7"
+    "GLM-4.5-Air"
+)
+declare -a ZHIPU_MODEL_DESCS=(
+    "[推荐] 最强性能"
+    "快速响应"
+)
+
+# 万界数据模型（Claude 系列）
+declare -a WANJIE_MODEL_IDS=(
     "claude-sonnet-4-20250514"
     "claude-sonnet-4-5-20250929"
     "claude-haiku-4-5-20251001"
     "claude-opus-4-1-20250805"
     "claude-opus-4-5-20251101"
 )
-
-declare -a MODEL_NAMES=(
+declare -a WANJIE_MODEL_NAMES=(
     "Claude Sonnet 4"
     "Claude Sonnet 4.5"
     "Claude Haiku 4.5"
     "Claude Opus 4.1"
     "Claude Opus 4.5"
 )
-
-declare -a MODEL_DESCS=(
+declare -a WANJIE_MODEL_DESCS=(
     "[推荐] 性价比之选，日常使用"
     "增强版，更强推理能力"
     "快速响应，适合简单任务"
     "强大性能，适合复杂任务"
     "旗舰模型，最强性能"
 )
+
+# 当前选择的服务商和模型
+SELECTED_PROVIDER=""
+SELECTED_PROVIDER_INDEX=0
+SELECTED_BASE_URL=""
+SELECTED_MODEL=""
+API_KEY=""
 
 # ============================================================================
 # 工具函数
@@ -179,19 +249,15 @@ do_download() {
 # ============================================================================
 
 # 检测 Xcode Command Line Tools (macOS only)
-# 返回 0 表示已安装或非 macOS，返回 1 表示需要安装
 check_xcode_clt() {
-    # 非 macOS 系统跳过检查
     if [ "$(uname)" != "Darwin" ]; then
         return 0
     fi
     
-    # 检查 git 是否可用（Xcode CLT 的主要依赖）
     if command -v git &> /dev/null; then
         return 0
     fi
     
-    # 备用检查：xcode-select -p 是否成功
     if xcode-select -p &> /dev/null 2>&1; then
         return 0
     fi
@@ -207,7 +273,6 @@ detect_shell() {
             RC_FILE="$HOME/.zshrc"
             ;;
         bash)
-            # macOS 可能用 .bash_profile
             if [ -f "$HOME/.bash_profile" ] && [ "$(uname)" = "Darwin" ]; then
                 RC_FILE="$HOME/.bash_profile"
             else
@@ -264,7 +329,6 @@ install_xcode_clt() {
     info "这是 macOS 上使用 git 的必要依赖"
     echo ""
     
-    # 触发安装对话框
     xcode-select --install 2>/dev/null || true
     
     echo ""
@@ -272,7 +336,6 @@ install_xcode_clt() {
     info "安装完成后按 Enter 继续..."
     read -r
     
-    # 验证安装是否成功
     if ! command -v git &> /dev/null; then
         error "Xcode Command Line Tools 安装似乎未完成"
         error "请手动运行: xcode-select --install"
@@ -292,11 +355,18 @@ install_nvm() {
     
     info "下载 nvm 安装脚本..."
     
+    # 设置 NVM_SOURCE 使用镜像加速 git clone
+    if [ "$MIRROR_MODE" = true ] && [ -n "$ACTIVE_MIRROR" ]; then
+        export NVM_SOURCE="${ACTIVE_MIRROR}/https://github.com/nvm-sh/nvm.git"
+        info "使用镜像加速 nvm git clone"
+    fi
+    
     # 下载并执行安装脚本
     if ! curl -fsSL "$install_script" | bash; then
         # 如果镜像失败，尝试直连
         if [ "$MIRROR_MODE" = true ]; then
             warn "镜像下载失败，尝试直连..."
+            unset NVM_SOURCE
             if ! curl -fsSL "$NVM_INSTALL_URL" | bash; then
                 error "nvm 安装失败"
                 exit 1
@@ -356,47 +426,57 @@ install_claude_code() {
 }
 
 # ============================================================================
-# 配置函数
+# 服务商与模型选择
 # ============================================================================
 
-# 交互式输入 API Key
-input_api_key() {
+# 选择服务商
+select_provider() {
     # 非交互式模式：使用环境变量
-    if [ "$NONINTERACTIVE" = "true" ] && [ -n "${ANTHROPIC_API_KEY:-}" ]; then
-        API_KEY="$ANTHROPIC_API_KEY"
-        success "API Key 已从环境变量设置"
-        return
+    if [ "$NONINTERACTIVE" = "true" ] && [ -n "${PROVIDER:-}" ]; then
+        if [[ "$PROVIDER" =~ ^[1-4]$ ]]; then
+            SELECTED_PROVIDER_INDEX=$((PROVIDER - 1))
+            SELECTED_PROVIDER="${PROVIDER_NAMES[$SELECTED_PROVIDER_INDEX]}"
+            SELECTED_BASE_URL="${PROVIDER_URLS[$SELECTED_PROVIDER_INDEX]}"
+            success "服务商已从环境变量设置: $SELECTED_PROVIDER"
+            return
+        fi
     fi
     
     echo ""
-    step "配置 API Key"
-    echo ""
-    echo -e "  请输入万界数据 API Key"
-    echo -e "  ${DIM}获取地址: https://data.wanjiehuyu.com${NC}"
+    step "选择服务商"
     echo ""
     
-    while true; do
-        read -rp "  API Key: " API_KEY
-        if [ -n "$API_KEY" ]; then
-            # 简单验证格式
-            if [[ "$API_KEY" =~ ^sk- ]]; then
-                success "API Key 已设置"
-                break
-            else
-                warn "API Key 格式可能不正确（通常以 sk- 开头），是否继续? [y/N]"
-                read -rn1 confirm
-                echo
-                if [[ "$confirm" =~ ^[Yy]$ ]]; then
-                    break
-                fi
-            fi
+    for i in "${!PROVIDER_NAMES[@]}"; do
+        local num=$((i + 1))
+        local name="${PROVIDER_NAMES[$i]}"
+        local key_url="${PROVIDER_KEY_URLS[$i]}"
+        
+        if [ "$i" -eq 0 ]; then
+            echo -e "  ${GREEN}${num}.${NC} ${BOLD}${name}${NC}  ${YELLOW}[默认]${NC}"
         else
-            error "API Key 不能为空"
+            echo -e "  ${num}. ${name}"
+        fi
+        echo -e "     ${DIM}API Key 获取: ${key_url}${NC}"
+    done
+    
+    echo ""
+    while true; do
+        read -rp "  请选择服务商 [1-4，默认 1]: " choice
+        choice="${choice:-1}"
+        
+        if [[ "$choice" =~ ^[1-4]$ ]]; then
+            SELECTED_PROVIDER_INDEX=$((choice - 1))
+            SELECTED_PROVIDER="${PROVIDER_NAMES[$SELECTED_PROVIDER_INDEX]}"
+            SELECTED_BASE_URL="${PROVIDER_URLS[$SELECTED_PROVIDER_INDEX]}"
+            success "已选择: ${SELECTED_PROVIDER}"
+            break
+        else
+            error "请输入 1-4 之间的数字"
         fi
     done
 }
 
-# 交互式选择模型
+# 选择模型（根据服务商）
 select_model() {
     # 非交互式模式：使用环境变量
     if [ "$NONINTERACTIVE" = "true" ] && [ -n "${ANTHROPIC_MODEL:-}" ]; then
@@ -406,57 +486,148 @@ select_model() {
     fi
     
     echo ""
-    step "选择默认模型"
+    step "选择模型 (${SELECTED_PROVIDER})"
     echo ""
     
-    for i in "${!MODEL_IDS[@]}"; do
+    local -a model_ids
+    local -a model_names
+    local -a model_descs
+    local model_count
+    local supports_custom=false
+    
+    case $SELECTED_PROVIDER_INDEX in
+        0)  # MiniMax
+            model_ids=("${MINIMAX_MODEL_IDS[@]}")
+            model_names=("${MINIMAX_MODEL_NAMES[@]}")
+            model_descs=("${MINIMAX_MODEL_DESCS[@]}")
+            ;;
+        1)  # 豆包
+            model_ids=("${DOUBAO_MODEL_IDS[@]}")
+            model_names=("${DOUBAO_MODEL_NAMES[@]}")
+            model_descs=("${DOUBAO_MODEL_DESCS[@]}")
+            supports_custom=true
+            ;;
+        2)  # 智谱
+            model_ids=("${ZHIPU_MODEL_IDS[@]}")
+            model_names=("${ZHIPU_MODEL_NAMES[@]}")
+            model_descs=("${ZHIPU_MODEL_DESCS[@]}")
+            ;;
+        3)  # 万界
+            model_ids=("${WANJIE_MODEL_IDS[@]}")
+            model_names=("${WANJIE_MODEL_NAMES[@]}")
+            model_descs=("${WANJIE_MODEL_DESCS[@]}")
+            ;;
+    esac
+    
+    model_count=${#model_ids[@]}
+    
+    for i in "${!model_ids[@]}"; do
         local num=$((i + 1))
-        local name="${MODEL_NAMES[$i]}"
-        local desc="${MODEL_DESCS[$i]}"
-        local id="${MODEL_IDS[$i]}"
+        local name="${model_names[$i]}"
+        local desc="${model_descs[$i]}"
+        local id="${model_ids[$i]}"
         
         if [ "$i" -eq 0 ]; then
             echo -e "  ${GREEN}${num}.${NC} ${BOLD}${name}${NC}  ${YELLOW}${desc}${NC}"
         else
             echo -e "  ${num}. ${name}  ${DIM}${desc}${NC}"
         fi
-        echo -e "     ${DIM}(${id})${NC}"
+        
+        # 不显示 __custom__ 作为 ID
+        if [ "$id" != "__custom__" ]; then
+            echo -e "     ${DIM}(${id})${NC}"
+        fi
     done
     
     echo ""
     while true; do
-        read -rp "  请选择 [1-5，默认 1]: " choice
+        read -rp "  请选择 [1-${model_count}，默认 1]: " choice
         choice="${choice:-1}"
         
-        if [[ "$choice" =~ ^[1-5]$ ]]; then
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "$model_count" ]; then
             local idx=$((choice - 1))
-            SELECTED_MODEL="${MODEL_IDS[$idx]}"
-            success "已选择: ${MODEL_NAMES[$idx]}"
+            local selected_id="${model_ids[$idx]}"
+            
+            # 处理自定义模型输入
+            if [ "$selected_id" = "__custom__" ]; then
+                echo ""
+                read -rp "  请输入自定义模型名称 [默认 ark-code-latest]: " custom_model
+                SELECTED_MODEL="${custom_model:-ark-code-latest}"
+            else
+                SELECTED_MODEL="$selected_id"
+            fi
+            
+            success "已选择模型: ${SELECTED_MODEL}"
             break
         else
-            error "请输入 1-5 之间的数字"
+            error "请输入 1-${model_count} 之间的数字"
+        fi
+    done
+}
+
+# 输入 API Key
+input_api_key() {
+    # 非交互式模式：使用环境变量
+    if [ "$NONINTERACTIVE" = "true" ] && [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+        API_KEY="$ANTHROPIC_API_KEY"
+        success "API Key 已从环境变量设置"
+        return
+    fi
+    
+    local key_url="${PROVIDER_KEY_URLS[$SELECTED_PROVIDER_INDEX]}"
+    
+    echo ""
+    step "配置 API Key"
+    echo ""
+    echo -e "  请输入 ${BOLD}${SELECTED_PROVIDER}${NC} API Key"
+    echo -e "  ${DIM}获取地址: ${key_url}${NC}"
+    echo ""
+    
+    while true; do
+        read -rp "  API Key: " API_KEY
+        if [ -n "$API_KEY" ]; then
+            success "API Key 已设置"
+            break
+        else
+            error "API Key 不能为空"
         fi
     done
 }
 
 # 计算模型映射
 calculate_model_mappings() {
-    # ANTHROPIC_DEFAULT_HAIKU_MODEL 始终为 claude-haiku-4-5-20251001
-    DEFAULT_HAIKU="claude-haiku-4-5-20251001"
-    
-    # ANTHROPIC_DEFAULT_SONNET_MODEL：如果选择 Sonnet 4.5 则用 4.5，否则用 Sonnet 4
-    if [ "$SELECTED_MODEL" = "claude-sonnet-4-5-20250929" ]; then
-        DEFAULT_SONNET="claude-sonnet-4-5-20250929"
-    else
-        DEFAULT_SONNET="claude-sonnet-4-20250514"
-    fi
-    
-    # ANTHROPIC_DEFAULT_OPUS_MODEL：如果选择 Opus 4.5 则用 4.5，否则用 Opus 4.1
-    if [ "$SELECTED_MODEL" = "claude-opus-4-5-20251101" ]; then
-        DEFAULT_OPUS="claude-opus-4-5-20251101"
-    else
-        DEFAULT_OPUS="claude-opus-4-1-20250805"
-    fi
+    case $SELECTED_PROVIDER_INDEX in
+        0)  # MiniMax - 无需映射
+            DEFAULT_HAIKU=""
+            DEFAULT_SONNET=""
+            DEFAULT_OPUS=""
+            ;;
+        1)  # 豆包 - 全部使用用户选择的模型
+            DEFAULT_HAIKU="$SELECTED_MODEL"
+            DEFAULT_SONNET="$SELECTED_MODEL"
+            DEFAULT_OPUS="$SELECTED_MODEL"
+            ;;
+        2)  # 智谱 - Haiku=GLM-4.5-Air, Sonnet/Opus=GLM-4.7
+            DEFAULT_HAIKU="GLM-4.5-Air"
+            DEFAULT_SONNET="GLM-4.7"
+            DEFAULT_OPUS="GLM-4.7"
+            ;;
+        3)  # 万界 - 保持原有逻辑
+            DEFAULT_HAIKU="claude-haiku-4-5-20251001"
+            
+            if [ "$SELECTED_MODEL" = "claude-sonnet-4-5-20250929" ]; then
+                DEFAULT_SONNET="claude-sonnet-4-5-20250929"
+            else
+                DEFAULT_SONNET="claude-sonnet-4-20250514"
+            fi
+            
+            if [ "$SELECTED_MODEL" = "claude-opus-4-5-20251101" ]; then
+                DEFAULT_OPUS="claude-opus-4-5-20251101"
+            else
+                DEFAULT_OPUS="claude-opus-4-1-20250805"
+            fi
+            ;;
+    esac
 }
 
 # 写入配置文件
@@ -470,7 +641,9 @@ write_settings() {
     calculate_model_mappings
     
     # 生成 JSON 配置
-    cat > "$SETTINGS_FILE" << EOF
+    # MiniMax 不需要 Haiku/Sonnet/Opus 映射
+    if [ "$SELECTED_PROVIDER_INDEX" -eq 0 ]; then
+        cat > "$SETTINGS_FILE" << EOF
 {
   "enabledPlugins": {
     "commit-commands@claude-plugins-official": true,
@@ -482,7 +655,27 @@ write_settings() {
   },
   "env": {
     "ANTHROPIC_AUTH_TOKEN": "${API_KEY}",
-    "ANTHROPIC_BASE_URL": "${WANJIE_BASE_URL}",
+    "ANTHROPIC_BASE_URL": "${SELECTED_BASE_URL}",
+    "ANTHROPIC_MODEL": "${SELECTED_MODEL}",
+    "API_TIMEOUT_MS": "3000000",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1
+  }
+}
+EOF
+    else
+        cat > "$SETTINGS_FILE" << EOF
+{
+  "enabledPlugins": {
+    "commit-commands@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true,
+    "github@claude-plugins-official": true,
+    "planning-with-files@planning-with-files": true,
+    "superpowers@superpowers-marketplace": true
+  },
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "${API_KEY}",
+    "ANTHROPIC_BASE_URL": "${SELECTED_BASE_URL}",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "${DEFAULT_HAIKU}",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "${DEFAULT_OPUS}",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "${DEFAULT_SONNET}",
@@ -492,6 +685,7 @@ write_settings() {
   }
 }
 EOF
+    fi
     
     success "配置已写入: $SETTINGS_FILE"
 }
@@ -500,19 +694,16 @@ EOF
 # PATH 配置
 # ============================================================================
 
-# 配置 PATH
 configure_path() {
     step "配置环境变量..."
     
     detect_shell
     
-    # 需要添加的 PATH 项
     local npm_bin
     npm_bin="$(npm config get prefix)/bin"
     local nvm_init='export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"'
     
-    # 检查并添加 nvm 初始化
     if ! grep -q 'NVM_DIR' "$RC_FILE" 2>/dev/null; then
         echo "" >> "$RC_FILE"
         echo "# nvm" >> "$RC_FILE"
@@ -520,7 +711,6 @@ configure_path() {
         info "已添加 nvm 初始化到 $RC_FILE"
     fi
     
-    # 检查并添加 npm bin 到 PATH
     if ! grep -q "$npm_bin" "$RC_FILE" 2>/dev/null; then
         echo "" >> "$RC_FILE"
         echo "# npm global bin" >> "$RC_FILE"
@@ -528,7 +718,6 @@ configure_path() {
         info "已添加 npm bin 到 PATH"
     fi
     
-    # 当前 session 生效
     export PATH="$PATH:$npm_bin"
     
     success "环境变量配置完成"
@@ -538,32 +727,38 @@ configure_path() {
 # 主流程
 # ============================================================================
 
-# 显示帮助
 show_help() {
     echo ""
-    echo -e "${BOLD}Claude Code 一键安装脚本${NC}"
+    echo -e "${BOLD}Easy Install Claude - 一键安装脚本${NC}"
     echo ""
     echo "用法:"
     echo "  bash install.sh           完整安装流程"
-    echo "  bash install.sh --config  仅重新配置（API Key + 模型选择）"
+    echo "  bash install.sh --config  仅重新配置（服务商 + API Key + 模型选择）"
     echo "  bash install.sh --help    显示此帮助"
     echo ""
+    echo "支持的服务商:"
+    echo "  1. MiniMax         https://platform.minimaxi.com"
+    echo "  2. 豆包 (火山引擎)  https://console.volcengine.com/ark"
+    echo "  3. 智谱 AI         https://open.bigmodel.cn"
+    echo "  4. 万界数据        https://data.wanjiehuyu.com"
+    echo ""
     echo "在线安装:"
-    echo "  国内用户: curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.sh | bash"
-    echo "  海外用户: curl -fsSL https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.sh | bash"
+    echo "  国内: curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.sh | bash"
+    echo "  海外: curl -fsSL https://raw.githubusercontent.com/taliove/easy-install-claude/main/install.sh | bash"
     echo ""
     echo "环境变量:"
-    echo "  USE_MIRROR=true   强制使用国内镜像加速"
-    echo "  USE_MIRROR=false  强制直连 GitHub"
+    echo "  USE_MIRROR=true/false/auto  镜像模式（默认 auto）"
+    echo "  PROVIDER=1-4                预设服务商"
+    echo "  ANTHROPIC_API_KEY=xxx       预设 API Key"
+    echo "  ANTHROPIC_MODEL=xxx         预设模型"
     echo ""
 }
 
-# 显示 banner
 show_banner() {
     echo ""
     echo -e "${CYAN}╔════════════════════════════════════════════════╗${NC}"
     echo -e "${CYAN}║  ${BOLD}Claude Code 一键安装${NC}${CYAN}                          ║${NC}"
-    echo -e "${CYAN}║  ${YELLOW}⚡ 万界数据 ⚡${NC}${CYAN}                                ║${NC}"
+    echo -e "${CYAN}║  ${YELLOW}Easy Install Claude${NC}${CYAN}                            ║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -574,19 +769,22 @@ config_only() {
     step "重新配置 Claude Code"
     divider
     
-    # 检查 Claude Code 是否已安装
     if ! command -v claude &> /dev/null; then
         error "Claude Code 未安装，请先运行完整安装"
         exit 1
     fi
     
-    input_api_key
+    select_provider
     select_model
+    input_api_key
     write_settings
     
     divider
     echo ""
     success "配置完成！"
+    echo ""
+    echo -e "  服务商: ${BOLD}${SELECTED_PROVIDER}${NC}"
+    echo -e "  模型:   ${BOLD}${SELECTED_MODEL}${NC}"
     echo ""
     echo -e "  运行 ${CYAN}claude${NC} 开始使用"
     echo ""
@@ -616,12 +814,10 @@ full_install() {
     else
         info "需要安装 Node.js ${NODE_MIN_VERSION}+"
         
-        # macOS: 检查 Xcode Command Line Tools（nvm 需要 git）
         if ! check_xcode_clt; then
             install_xcode_clt
         fi
         
-        # 检查/安装 nvm
         if check_nvm; then
             info "nvm 已安装"
             load_nvm
@@ -629,7 +825,6 @@ full_install() {
             install_nvm
         fi
         
-        # 安装 Node.js
         install_nodejs
     fi
     
@@ -647,10 +842,11 @@ full_install() {
     
     divider
     
-    # Step 4: 配置 API Key 和模型
+    # Step 4: 选择服务商和配置
     step "Step 4: 配置 Claude Code"
-    input_api_key
+    select_provider
     select_model
+    input_api_key
     write_settings
     
     divider
@@ -666,6 +862,9 @@ full_install() {
     echo -e "${GREEN}╔════════════════════════════════════════════════╗${NC}"
     echo -e "${GREEN}║  ${BOLD}安装完成！${NC}${GREEN}                                    ║${NC}"
     echo -e "${GREEN}╚════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "  服务商: ${BOLD}${SELECTED_PROVIDER}${NC}"
+    echo -e "  模型:   ${BOLD}${SELECTED_MODEL}${NC}"
     echo ""
     echo -e "  请运行以下命令使配置生效:"
     echo ""
