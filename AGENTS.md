@@ -1,440 +1,261 @@
 # AGENTS.md - AI Coding Agent Guidelines
 
-This document provides guidelines for AI coding agents working on the `go-install-claude` project.
+This document provides guidelines for AI coding agents working on the `claude-installer` project.
 
 ## Project Overview
 
-A Go-based TUI installer tool for Claude Code with pre-configured Wanjie Data proxy (万界数据).
-Built with Bubble Tea (Charm) framework for terminal UI.
+A Shell/PowerShell-based installer for Claude Code with pre-configured Wanjie Data proxy (万界数据).
+One command to install everything: Node.js, Claude Code, and configuration.
 
-- **Language**: Go 1.21+
-- **Module**: `github.com/taliove/go-install-claude`
-- **TUI Framework**: Bubble Tea (`github.com/charmbracelet/bubbletea`)
-- **Platforms**: Windows, Linux, macOS (amd64/arm64)
-
-## Build, Lint, and Test Commands
-
-### Quick Reference
-
-```bash
-# Build current platform
-make build
-go build -o dist/claude-installer.exe ./cmd/installer
-
-# Build all platforms
-make build-all
-
-# Run linter (REQUIRED before push)
-make lint
-golangci-lint run
-
-# Run all tests
-make test
-go test -v -race -cover ./...
-
-# Run a single test
-go test -v -run TestFunctionName ./internal/config/...
-go test -v -run TestFunctionName ./path/to/package
-
-# Format code
-make fmt
-go fmt ./...
-goimports -w .
-
-# Run development version
-make run
-go run ./cmd/installer
-
-# Install dev tools
-make tools
-go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-go install golang.org/x/tools/cmd/goimports@latest
-```
-
-### Pre-Push Checklist
-
-**ALWAYS run before pushing:**
-```bash
-golangci-lint run          # Must pass with no errors
-go test -v -race ./...     # Must pass all tests
-go build ./cmd/installer   # Must compile successfully
-```
-
-### Commit and Push Protocol
-
-**IMPORTANT**: When the user requests "签入推送" (commit and push), the AI agent MUST:
-
-1. **Run unit tests first**:
-   ```bash
-   go test -v ./...
-   ```
-
-2. **Run E2E tests**:
-   ```bash
-   bash test/e2e/tests/00_install_script.sh  # Install script validation
-   # Other applicable E2E tests
-   ```
-
-3. **Only commit and push after ALL tests pass**
-
-4. **If any test fails**: Fix the issue first, then re-run tests before committing
-
-This ensures code quality and prevents broken builds in CI.
-
-## Code Style Guidelines
-
-### Import Organization
-
-Imports MUST be organized in three groups with blank lines between them:
-
-```go
-import (
-    // 1. Standard library
-    "fmt"
-    "strings"
-
-    // 2. Third-party packages
-    "github.com/charmbracelet/bubbletea"
-    "github.com/charmbracelet/lipgloss"
-
-    // 3. Local packages (github.com/taliove/go-install-claude/...)
-    "github.com/taliove/go-install-claude/internal/config"
-    "github.com/taliove/go-install-claude/internal/tui/theme"
-)
-```
-
-### File Permissions (Octal Literals)
-
-Use the new Go 1.13+ octal literal style:
-```go
-// Good
-os.MkdirAll(dir, 0o755)
-os.WriteFile(path, data, 0o600)
-
-// Bad
-os.MkdirAll(dir, 0755)
-os.WriteFile(path, data, 0600)
-```
-
-### Naming Conventions
-
-| Type | Convention | Example |
-|------|------------|---------|
-| Package | lowercase, single word | `config`, `detector`, `tui` |
-| Public functions | PascalCase | `NewModel()`, `GetDefaultModel()` |
-| Private functions | camelCase | `doDetect()`, `handleEnter()` |
-| Constants | PascalCase (public) or camelCase (private) | `WanjieBaseURL`, `logoArt` |
-| Structs | PascalCase | `InstallConfig`, `Model` |
-| Interfaces | PascalCase, often -er suffix | `Installer`, `Renderer` |
-| Errors | Err prefix | `ErrConfigNotFound`, `ErrAPIKeyNotFound` |
-
-### Control Flow
-
-Use switch statements instead of if-else chains (3+ conditions):
-```go
-// Good
-switch {
-case i < index:
-    s.steps[i].Status = StepCompleted
-case i == index:
-    s.steps[i].Status = StepCurrent
-default:
-    s.steps[i].Status = StepPending
-}
-
-// Bad
-if i < index {
-    s.steps[i].Status = StepCompleted
-} else if i == index {
-    s.steps[i].Status = StepCurrent
-} else {
-    s.steps[i].Status = StepPending
-}
-```
-
-### Function Parameters
-
-Combine parameters of the same type:
-```go
-// Good
-func newModel(mode AppMode, claudeDir, currentModel string) Model
-
-// Bad
-func newModel(mode AppMode, claudeDir string, currentModel string) Model
-```
-
-### Error Handling
-
-- Always check and handle errors
-- Return errors to caller, don't panic
-- Use custom error variables for common errors:
-
-```go
-var ErrConfigNotFound = errors.New("配置文件不存在")
-
-func ReadSettings() (*Config, error) {
-    if !exists {
-        return nil, ErrConfigNotFound
-    }
-    // ...
-}
-```
-
-### Comments
-
-- Package comments are optional (disabled in linter)
-- Exported items comments are optional (disabled in linter)
-- Use Chinese comments for Chinese users where appropriate
-- Doc comments should explain "why", not "what"
+- **Scripts**: Bash (install.sh), PowerShell (install.ps1)
+- **Platforms**: Windows, Linux, macOS
+- **Dependencies**: curl/wget (Linux/macOS), PowerShell 5+ (Windows)
 
 ## Project Structure
 
 ```
-go-install-claude/
-├── cmd/installer/main.go      # Entry point, CLI flags
-├── internal/
-│   ├── config/                # Configuration management
-│   │   ├── config.go          # Core config types and functions
-│   │   └── reader.go          # Read existing settings
-│   ├── detector/              # System environment detection
-│   │   └── detector.go        # Detect Node.js, npm, paths
-│   ├── installer/             # Installation executor
-│   │   └── installer.go       # npm install logic
-│   ├── version/               # Version info (injected at build)
-│   │   └── version.go
-│   └── tui/                   # Terminal UI
-│       ├── app.go             # Main Bubble Tea model
-│       ├── components/        # Reusable UI components
-│       │   ├── core/          # Logo, StatusBar
-│       │   ├── dialog/        # Dialog, HelpDialog
-│       │   └── wizard/        # Steps, Selector, ConfigCard
-│       ├── layout/            # Container, Overlay
-│       ├── styles/            # Style helpers, Icons
-│       └── theme/             # Theme system (OpenCode, Catppuccin, etc.)
-├── .github/workflows/         # CI/CD (ci.yml, release.yml)
-├── .golangci.yml              # Linter configuration
-├── Makefile                   # Build commands
-├── install.sh                 # Linux/macOS install script
-└── install.ps1                # Windows install script
+claude-installer/
+├── install.sh              # Linux/macOS installation script
+├── install.ps1             # Windows installation script (PowerShell)
+├── .github/
+│   └── workflows/
+│       └── ci.yml          # Script syntax validation
+├── README.md               # Project documentation
+├── AGENTS.md               # AI agent guidelines (this file)
+├── LICENSE                 # MIT License
+├── .gitignore
+└── .editorconfig
 ```
 
-## Enabled Linters
+## Script Commands
 
-The project uses these golangci-lint checks (see `.golangci.yml`):
-
-- **errcheck**: Check unhandled errors
-- **gosimple**: Simplify code suggestions
-- **govet**: Go vet checks
-- **staticcheck**: Static analysis
-- **unused**: Unused variables/functions
-- **gofmt**: Code formatting
-- **goimports**: Import sorting (local-prefixes: github.com/taliove/go-install-claude)
-- **misspell**: Spelling check
-- **revive**: Code style
-- **unconvert**: Unnecessary type conversions
-- **unparam**: Unused parameters
-- **gocritic**: Code optimization (octalLiteral, ifElseChain, paramTypeCombine)
-
-## TUI Development Guidelines
-
-### Bubble Tea Pattern
-
-Follow the Elm architecture:
-```go
-type Model struct { ... }
-func (m Model) Init() tea.Cmd { ... }
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { ... }
-func (m Model) View() string { ... }
-```
-
-### Theme Usage
-
-Always use theme colors, never hardcode:
-```go
-t := theme.Current()
-style := lipgloss.NewStyle().Foreground(t.Primary())
-```
-
-### Icons
-
-Use icons from `styles/icons.go`:
-```go
-styles.IconCheck   // ✓
-styles.IconCross   // ✗
-styles.IconArrow   // →
-styles.IconRocket  // 🚀
-```
-
-## CI/CD Pipeline
-
-- **Push to main**: Runs lint, test, build (ci.yml)
-- **Push tag v***: Creates GitHub release with binaries (release.yml)
-
-## Release Process
-
-### Semantic Versioning
-
-This project follows [Semantic Versioning](https://semver.org/):
-- **MAJOR** (v2.0.0): Breaking changes
-- **MINOR** (v1.1.0): New features, backward compatible
-- **PATCH** (v1.0.1): Bug fixes, backward compatible
-
-### Pre-Release Checklist
-
-**ALWAYS run before creating a release:**
-```bash
-# 1. Ensure working directory is clean
-git status
-
-# 2. Run all checks
-golangci-lint run          # Must pass with no errors
-go test -v ./...           # Must pass all tests  
-go build ./cmd/installer   # Must compile successfully
-
-# 3. Verify you're on main branch and up to date
-git checkout main
-git pull origin main
-```
-
-### Creating a Release
+### Testing Scripts Locally
 
 ```bash
-# 1. Determine version number based on changes
-#    - Breaking changes: bump MAJOR
-#    - New features: bump MINOR  
-#    - Bug fixes: bump PATCH
+# Validate Bash syntax
+bash -n install.sh
 
-# 2. Create annotated tag with changelog
-git tag -a v1.2.0 -m "v1.2.0: Brief description
+# Run ShellCheck (install: apt install shellcheck / brew install shellcheck)
+shellcheck install.sh
 
-Changes:
-- feat: new feature description
-- fix: bug fix description
-- docs: documentation updates"
-
-# 3. Push tag to trigger GitHub Actions release
-git push origin v1.2.0
-
-# 4. Verify release on GitHub Actions
-#    https://github.com/taliove/go-install-claude/actions
+# Validate PowerShell syntax (PowerShell)
+$null = [System.Management.Automation.Language.Parser]::ParseFile("install.ps1", [ref]$null, [ref]$errors)
+if ($errors) { $errors | ForEach-Object { Write-Error $_ } }
 ```
 
-### Release Workflow (Automated)
+### Running Install Scripts
 
-When a tag matching `v*` is pushed, GitHub Actions will:
-1. Build binaries for all platforms (Windows, Linux, macOS)
-2. Compress with UPX (Linux/Windows only)
-3. Generate SHA256 checksums
-4. Create GitHub Release with binaries attached
-
-### Hotfix Process
-
-For urgent fixes to a released version:
 ```bash
-# 1. Create hotfix from the release tag
-git checkout -b hotfix/v1.2.1 v1.2.0
+# Linux/macOS - Full install
+./install.sh
 
-# 2. Make fixes and commit
-git add .
-git commit -m "fix: critical bug description"
+# Linux/macOS - Config only
+./install.sh --config
 
-# 3. Run all checks
-golangci-lint run && go test -v ./... && go build ./cmd/installer
+# Windows - Full install
+.\install.ps1
 
-# 4. Merge to main
-git checkout main
-git merge hotfix/v1.2.1
-
-# 5. Tag and release
-git tag -a v1.2.1 -m "v1.2.1: Hotfix description"
-git push origin main v1.2.1
-
-# 6. Clean up
-git branch -d hotfix/v1.2.1
+# Windows - Config only
+.\install.ps1 -Config
 ```
 
-## Common Tasks
+## Code Style Guidelines
 
-### Adding a New Model
+### Bash (install.sh)
 
-Edit `internal/config/config.go`:
-```go
-var SupportedModels = []ModelInfo{
-    {ID: "claude-new-model", Name: "Claude New", Description: "描述"},
-    // ...
+1. **Shebang**: Always use `#!/bin/bash`
+
+2. **Error handling**: Use `set -e` at the start
+
+3. **Function naming**: Use `snake_case`
+   ```bash
+   install_nodejs() { ... }
+   prompt_api_key() { ... }
+   ```
+
+4. **Variable naming**: 
+   - Local variables: `lowercase_with_underscores`
+   - Global/exported: `UPPERCASE_WITH_UNDERSCORES`
+   ```bash
+   local api_key="$1"
+   export ANTHROPIC_API_KEY="$api_key"
+   ```
+
+5. **Quoting**: Always quote variables
+   ```bash
+   # Good
+   echo "$variable"
+   
+   # Bad
+   echo $variable
+   ```
+
+6. **Command substitution**: Use `$()` instead of backticks
+   ```bash
+   # Good
+   version=$(node -v)
+   
+   # Bad
+   version=`node -v`
+   ```
+
+7. **Conditionals**: Use `[[ ]]` for tests
+   ```bash
+   if [[ -z "$var" ]]; then
+       echo "var is empty"
+   fi
+   ```
+
+8. **Colors**: Define at the top
+   ```bash
+   RED='\033[0;31m'
+   GREEN='\033[0;32m'
+   NC='\033[0m'
+   ```
+
+### PowerShell (install.ps1)
+
+1. **Function naming**: Use `Verb-Noun` pattern (PascalCase)
+   ```powershell
+   function Install-NodeJS { ... }
+   function Get-LatestVersion { ... }
+   ```
+
+2. **Variable naming**: Use `$PascalCase` for script-scope, `$camelCase` for local
+   ```powershell
+   $script:ApiKey = "..."
+   $localVar = "..."
+   ```
+
+3. **Parameters**: Use `param()` block at the top
+   ```powershell
+   param(
+       [switch]$Config,
+       [switch]$Help
+   )
+   ```
+
+4. **Error handling**: Use `$ErrorActionPreference = "Stop"`
+
+5. **Output functions**: Use consistent ASCII-safe prefixes
+   ```powershell
+   function Write-Info { Write-Host "[i] " -ForegroundColor Cyan -NoNewline; Write-Host $args[0] }
+   function Write-Success { Write-Host "[+] " -ForegroundColor Green -NoNewline; Write-Host $args[0] }
+   ```
+
+## Model Configuration
+
+### Supported Models
+
+| Model ID | Name | Description |
+|----------|------|-------------|
+| `claude-sonnet-4-20250514` | Claude Sonnet 4 | 性价比之选，推荐日常使用 (Default) |
+| `claude-sonnet-4-5-20250929` | Claude Sonnet 4.5 | 增强版 Sonnet，更强推理能力 |
+| `claude-haiku-4-5-20251001` | Claude Haiku 4.5 | 快速响应，适合简单任务 |
+| `claude-opus-4-1-20250805` | Claude Opus 4.1 | 强大性能，适合复杂任务 |
+| `claude-opus-4-5-20251101` | Claude Opus 4.5 | 旗舰模型，最强性能 |
+
+### Model Mapping Rules
+
+| Variable | Logic |
+|----------|-------|
+| `ANTHROPIC_MODEL` | User's selected model |
+| `ANTHROPIC_DEFAULT_HAIKU_MODEL` | Always `claude-haiku-4-5-20251001` |
+| `ANTHROPIC_DEFAULT_SONNET_MODEL` | Use 4.5 if user selected Sonnet 4.5, otherwise Sonnet 4 |
+| `ANTHROPIC_DEFAULT_OPUS_MODEL` | Use 4.5 if user selected Opus 4.5, otherwise Opus 4.1 |
+
+### settings.json Template
+
+```json
+{
+  "enabledPlugins": {
+    "commit-commands@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true,
+    "github@claude-plugins-official": true,
+    "planning-with-files@planning-with-files": true,
+    "superpowers@superpowers-marketplace": true
+  },
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "<API_KEY>",
+    "ANTHROPIC_BASE_URL": "https://maas-openapi.wanjiedata.com/api/anthropic",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5-20251001",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "<MAPPED_VALUE>",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "<MAPPED_VALUE>",
+    "ANTHROPIC_MODEL": "<SELECTED_MODEL>",
+    "API_TIMEOUT_MS": "3000000",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1
+  }
 }
 ```
 
-### Creating a New TUI Component
+## China Network Acceleration
 
-1. Create file in appropriate `internal/tui/components/` subdirectory
-2. Use theme colors via `theme.Current()`
-3. Return string from `Render()` method
-4. Follow existing component patterns
+### Network Sources
 
-## China Network Acceleration (国内网络加速)
-
-This project is designed to work smoothly in mainland China. Here are the acceleration strategies used:
-
-### Network Sources Overview
-
-| Component | URL | China-Friendly |
-|-----------|-----|----------------|
-| Claude API | `https://maas-openapi.wanjiedata.com/api/anthropic` | ✅ 万界数据代理 |
-| NPM Registry | `https://registry.npmmirror.com` | ✅ 淘宝镜像 |
-| GitHub Releases | `https://github.com/...` | ⚠️ 需要镜像加速 |
-| GitHub Raw | `https://raw.githubusercontent.com/...` | ⚠️ 需要镜像加速 |
-| GitHub API | `https://api.github.com/...` | ⚠️ 可能不稳定 |
+| Component | URL | China Mirror |
+|-----------|-----|--------------|
+| Claude API | `https://maas-openapi.wanjiedata.com/api/anthropic` | Built-in (万界数据) |
+| NPM Registry | `https://registry.npmmirror.com` | 淘宝镜像 |
+| Node.js (nvm) | `https://npmmirror.com/mirrors/node` | npmmirror |
+| GitHub Raw | `https://raw.githubusercontent.com/...` | ghproxy.net |
 
 ### GitHub Mirror Strategy
 
-The install scripts (`install.sh`, `install.ps1`) implement automatic GitHub acceleration:
+Scripts automatically detect and use mirrors:
 
-1. **Auto-detection**: Scripts detect if GitHub is accessible
+1. **Auto-detection**: Test if GitHub is accessible (3s timeout)
 2. **Mirror fallback**: If blocked, try mirrors in order:
    - `https://ghproxy.net`
    - `https://mirror.ghproxy.com`
    - `https://gh-proxy.com`
-3. **Direct fallback**: If all mirrors fail, attempt direct connection
+3. **Direct fallback**: If all mirrors fail, try direct connection
 
 ### Environment Variables
 
-Users can control mirror behavior:
-
 ```bash
-# Force use mirror (China users)
+# Force mirror (China users)
 USE_MIRROR=true curl -fsSL ... | bash
 
-# Force direct connection (overseas users)
+# Force direct (overseas users)
 USE_MIRROR=false curl -fsSL ... | bash
 
 # Auto-detect (default)
 curl -fsSL ... | bash
 ```
 
-### One-Line Install Commands
+## CI/CD Pipeline
 
-**For China users (recommended):**
+### Workflow: ci.yml
+
+Triggered on push/PR to main branch:
+
+1. **validate-bash**: Check install.sh syntax with `bash -n` and ShellCheck
+2. **validate-powershell**: Check install.ps1 syntax with PowerShell Parser
+
+### Pre-Push Checklist
+
 ```bash
-# Linux/macOS
-curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/taliove/go-install-claude/main/install.sh | bash
+# Must pass before pushing
+bash -n install.sh
+shellcheck install.sh
 
-# Windows PowerShell
-iwr -useb https://ghproxy.net/https://raw.githubusercontent.com/taliove/go-install-claude/main/install.ps1 | iex
+# PowerShell (run in pwsh)
+$null = [System.Management.Automation.Language.Parser]::ParseFile("install.ps1", [ref]$null, [ref]$errors)
 ```
 
-**For overseas users:**
-```bash
-# Linux/macOS
-curl -fsSL https://raw.githubusercontent.com/taliove/go-install-claude/main/install.sh | bash
+## Common Tasks
 
-# Windows PowerShell
-iwr -useb https://raw.githubusercontent.com/taliove/go-install-claude/main/install.ps1 | iex
-```
+### Adding a New Model
 
-### Adding New Mirrors
+1. Add model to the selection menu in both scripts
+2. Update model mapping logic if needed
+3. Update AGENTS.md model table
+4. Update README.md model table
 
-To add a new GitHub mirror, update both scripts:
+### Updating GitHub Mirrors
+
+Update both scripts' mirror arrays:
 
 **install.sh:**
 ```bash
@@ -442,7 +263,7 @@ GITHUB_MIRRORS=(
     "https://ghproxy.net"
     "https://mirror.ghproxy.com"
     "https://gh-proxy.com"
-    "https://new-mirror.example.com"  # Add new mirror here
+    "https://new-mirror.example.com"  # Add here
 )
 ```
 
@@ -452,17 +273,39 @@ $GitHubMirrors = @(
     "https://ghproxy.net"
     "https://mirror.ghproxy.com"
     "https://gh-proxy.com"
-    "https://new-mirror.example.com"  # Add new mirror here
+    "https://new-mirror.example.com"  # Add here
 )
 ```
 
-### NPM Mirror Configuration
+### Updating nvm Version
 
-The installer automatically configures NPM to use the China mirror:
-
-```go
-// internal/installer/installer.go
-cmd := exec.Command("npm", "config", "set", "registry", "https://registry.npmmirror.com")
+Update the nvm install URL in install.sh:
+```bash
+NVM_INSTALL_URL="https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh"
 ```
 
-This is enabled by default (`UseNPMMirror: true`) and runs before `npm install`.
+## Commit and Push Protocol
+
+When the user requests "签入推送" (commit and push):
+
+1. **Validate scripts first**:
+   ```bash
+   bash -n install.sh
+   shellcheck install.sh  # If available
+   ```
+
+2. **Only commit and push after validation passes**
+
+3. **If validation fails**: Fix the issue first, then re-validate
+
+## Release Process
+
+Since there are no binary builds, releases are simply for versioning:
+
+```bash
+# Create version tag
+git tag -a v2.0.0 -m "v2.0.0: Pure shell script installer"
+git push origin v2.0.0
+```
+
+The scripts are always fetched from `main` branch, so users always get the latest version.

@@ -1,10 +1,9 @@
 # Claude Code 一键安装工具
 
-[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat-square&logo=go)](https://go.dev/)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blue?style=flat-square)](https://github.com/taliove/go-install-claude)
-[![Release](https://img.shields.io/github/v/release/taliove/go-install-claude?style=flat-square)](https://github.com/taliove/go-install-claude/releases/latest)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blue?style=flat-square)](https://github.com/taliove/claude-installer)
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
-专为国内用户设计的 Claude Code 一键安装工具，预配置万界数据代理，只需输入 API Key 即可完成安装。
+专为国内用户设计的 Claude Code 一键安装工具，预配置万界数据代理，一行命令完成所有安装配置。
 
 ```
   ╔════════════════════════════════════════════╗
@@ -15,15 +14,13 @@
 
 ## ✨ 特性
 
-- 🎨 **精美 TUI 界面** - 参考 OpenCode/Claude Code 的专业视觉设计
-- 🚀 **一键安装** - 自动配置 NPM 镜像、安装 Claude Code
+- 🚀 **一键安装** - 自动安装 Node.js、配置 NPM 镜像、安装 Claude Code
 - 🔧 **预设万界代理** - 无需手动配置代理地址
 - 📦 **多模型支持** - 支持选择 Claude Sonnet/Opus/Haiku 系列
-- 🔄 **模型切换** - 已安装用户可随时切换模型
+- 🔄 **随时重配** - 使用 `--config` 参数重新配置 API Key 和模型
 - 💻 **跨平台支持** - Windows、Linux、macOS 全平台覆盖
 - 🔑 **安全配置** - API Key 自动写入 `~/.claude/settings.json`
-- 🎯 **多主题支持** - 内置 OpenCode、Catppuccin、Tokyo Night 主题
-- 📦 **UPX 压缩** - Linux/Windows 二进制文件使用 UPX 压缩，体积更小
+- 🌐 **网络加速** - 自动检测并使用国内镜像加速
 
 ## 📥 一键安装
 
@@ -32,13 +29,13 @@
 #### Linux / macOS
 
 ```bash
-curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/taliove/go-install-claude/main/install.sh | bash
+curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/taliove/claude-installer/main/install.sh | bash
 ```
 
 #### Windows (PowerShell)
 
 ```powershell
-iwr -useb https://ghproxy.net/https://raw.githubusercontent.com/taliove/go-install-claude/main/install.ps1 | iex
+iwr -useb https://ghproxy.net/https://raw.githubusercontent.com/taliove/claude-installer/main/install.ps1 | iex
 ```
 
 ### 海外用户（直连 GitHub）
@@ -46,45 +43,31 @@ iwr -useb https://ghproxy.net/https://raw.githubusercontent.com/taliove/go-insta
 #### Linux / macOS
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/taliove/go-install-claude/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/taliove/claude-installer/main/install.sh | bash
 ```
 
 #### Windows (PowerShell)
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/taliove/go-install-claude/main/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/taliove/claude-installer/main/install.ps1 | iex
 ```
 
-### 环境变量控制
+## 🔄 重新配置
+
+已安装用户可随时重新配置 API Key 和模型：
+
+#### Linux / macOS
 
 ```bash
-# 强制使用国内镜像加速
-USE_MIRROR=true curl -fsSL <URL> | bash
-
-# 强制直连 GitHub（海外用户）
-USE_MIRROR=false curl -fsSL <URL> | bash
-
-# 自动检测（默认）
-curl -fsSL <URL> | bash
+curl -fsSL https://ghproxy.net/https://raw.githubusercontent.com/taliove/claude-installer/main/install.sh | bash -s -- --config
 ```
 
-### 手动下载
+#### Windows (PowerShell)
 
-从 [Releases](https://github.com/taliove/go-install-claude/releases/latest) 页面下载对应平台的二进制文件：
-
-| 平台 | 文件 | 压缩 |
-|------|------|------|
-| Windows x64 | `claude-installer-windows-amd64.exe` | ✅ UPX |
-| Linux x64 | `claude-installer-linux-amd64` | ✅ UPX |
-| macOS Intel | `claude-installer-darwin-amd64` | ❌ |
-| macOS Apple Silicon | `claude-installer-darwin-arm64` | ❌ |
-
-> macOS 二进制文件未使用 UPX 压缩，因为 UPX 对 macOS/ARM64 的兼容性有限。
-
-## 📋 前置要求
-
-- **Node.js 18+** - [下载地址](https://nodejs.org/)
-- **万界数据 API Key** - [获取地址](https://www.wanjiedata.com)
+```powershell
+# 下载后运行
+Invoke-WebRequest -Uri "https://ghproxy.net/https://raw.githubusercontent.com/taliove/claude-installer/main/install.ps1" -OutFile install.ps1; .\install.ps1 -Config
+```
 
 ## 🔧 支持的模型
 
@@ -98,46 +81,44 @@ curl -fsSL <URL> | bash
 
 ## 🎮 命令行选项
 
-```bash
-# 完整安装向导（默认）
-claude-installer
-
-# 交互式切换模型（已安装用户）
-claude-installer --switch-model
-
-# 查看当前配置
-claude-installer --config
-
-# 列出所有支持的模型
-claude-installer --list-models
-
-# 显示版本信息
-claude-installer --version
-```
-
-### 模型切换
-
-已安装 Claude Code 的用户可以随时切换模型：
+### install.sh (Linux/macOS)
 
 ```bash
-claude-installer --switch-model
+# 完整安装（默认）
+curl -fsSL <URL> | bash
+
+# 仅重新配置
+curl -fsSL <URL> | bash -s -- --config
+
+# 显示帮助
+curl -fsSL <URL> | bash -s -- --help
 ```
 
-这会：
-1. 读取现有的 API Key 配置
-2. 进入交互式模型选择界面
-3. 更新模型配置（保留其他设置）
+### install.ps1 (Windows)
 
-## 🎨 界面预览
+```powershell
+# 完整安装（默认）
+.\install.ps1
 
-安装向导包含以下步骤：
+# 仅重新配置
+.\install.ps1 -Config
 
-1. **环境检测** - 自动检测 Node.js、npm、网络连接
-2. **输入 API Key** - 安全输入万界数据 API Key
-3. **选择模型** - 从支持的模型列表中选择
-4. **确认配置** - 预览并确认安装配置
-5. **安装** - 自动安装 Claude Code CLI
-6. **完成** - 显示安装成功信息
+# 显示帮助
+.\install.ps1 -Help
+```
+
+## 🌐 环境变量控制
+
+```bash
+# 强制使用国内镜像加速
+USE_MIRROR=true curl -fsSL <URL> | bash
+
+# 强制直连 GitHub（海外用户）
+USE_MIRROR=false curl -fsSL <URL> | bash
+
+# 自动检测（默认）
+curl -fsSL <URL> | bash
+```
 
 ## 📁 配置文件
 
@@ -145,10 +126,23 @@ claude-installer --switch-model
 
 ```json
 {
+  "enabledPlugins": {
+    "commit-commands@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true,
+    "github@claude-plugins-official": true,
+    "planning-with-files@planning-with-files": true,
+    "superpowers@superpowers-marketplace": true
+  },
   "env": {
+    "ANTHROPIC_AUTH_TOKEN": "your-api-key",
     "ANTHROPIC_BASE_URL": "https://maas-openapi.wanjiedata.com/api/anthropic",
-    "ANTHROPIC_API_KEY": "your-api-key",
-    "ANTHROPIC_MODEL": "claude-sonnet-4-20250514"
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5-20251001",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-1-20250805",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-20250514",
+    "ANTHROPIC_MODEL": "claude-sonnet-4-20250514",
+    "API_TIMEOUT_MS": "3000000",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1
   }
 }
 ```
@@ -163,121 +157,53 @@ claude
 
 开始使用 Claude Code 进行 AI 编程！
 
-## 🏗️ 自行构建
-
-### 前置条件
-
-- Go 1.21+
-
-### 构建命令
-
-```bash
-# 克隆仓库
-git clone https://github.com/taliove/go-install-claude.git
-cd go-install-claude
-
-# 下载依赖
-go mod tidy
-
-# 构建所有平台
-# Windows PowerShell
-.\build.ps1
-
-# Linux/macOS
-chmod +x build.sh && ./build.sh
-
-# 仅构建当前平台
-go build -o claude-installer ./cmd/installer
-```
-
-### 构建输出
-
-```
-dist/
-├── claude-installer-windows-amd64.exe  # Windows 64位
-├── claude-installer-linux-amd64        # Linux 64位
-├── claude-installer-darwin-amd64       # macOS Intel
-└── claude-installer-darwin-arm64       # macOS Apple Silicon
-```
-
-## 🔄 版本发布
-
-项目使用 GitHub Actions 自动发布。发布新版本只需：
-
-```bash
-# 创建版本标签
-git tag v1.1.0
-git push origin v1.1.0
-```
-
-GitHub Actions 将自动：
-1. 运行代码检查 (golangci-lint)
-2. 运行测试
-3. 构建所有平台二进制文件
-4. 使用 UPX 压缩 Linux/Windows 二进制文件
-5. 创建 GitHub Release 并上传文件
-
 ## ❓ 常见问题
 
-### Q: 提示 "未检测到 Node.js"
+### Q: 安装过程自动做了什么？
 
-请先安装 Node.js 18 或更高版本：https://nodejs.org/
+1. 检测/安装 Node.js 18+（使用 nvm/winget）
+2. 配置 npm 使用淘宝镜像
+3. 安装 Claude Code CLI
+4. 交互式输入 API Key 和选择模型
+5. 写入配置到 `~/.claude/settings.json`
+6. 配置 PATH 环境变量
 
-### Q: 安装失败，显示网络错误
+### Q: Node.js 安装失败
 
-1. 检查网络连接
-2. 程序会自动使用淘宝 NPM 镜像
-3. 如果仍失败，请尝试手动安装：
-   ```bash
-   npm config set registry https://registry.npmmirror.com
-   npm install -g @anthropic-ai/claude-code
-   ```
+**Linux/macOS**: 脚本使用 nvm 安装 Node.js，如果失败请手动安装：
+```bash
+# 安装 nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+
+# 安装 Node.js
+nvm install 18
+```
+
+**Windows**: 脚本使用 winget 安装，如果失败请从 https://nodejs.org/ 下载安装。
+
+### Q: Claude Code 安装失败
+
+检查网络连接，然后手动安装：
+```bash
+npm config set registry https://registry.npmmirror.com
+npm install -g @anthropic-ai/claude-code
+```
 
 ### Q: 如何修改配置？
 
-直接编辑 `~/.claude/settings.json` 文件，或使用：
+方式一：重新运行配置脚本
 ```bash
-claude-installer --switch-model
+curl -fsSL <URL> | bash -s -- --config
 ```
 
-### Q: 如何切换模型？
-
-运行以下命令进入交互式模型选择：
+方式二：直接编辑配置文件
 ```bash
-claude-installer --switch-model
+vim ~/.claude/settings.json
 ```
 
-### Q: 如何查看当前配置？
+### Q: 如何获取 API Key？
 
-```bash
-claude-installer --config
-```
-
-### Q: 如何切换主题？
-
-当前版本默认使用 OpenCode 主题。后续版本将支持主题切换功能。
-
-## 📏 代码规范
-
-项目遵循 Go 最佳实践，使用以下工具确保代码质量：
-
-```bash
-# 安装开发工具
-make tools
-
-# 格式化代码
-make fmt
-
-# 代码检查
-make lint
-
-# 运行测试
-make test
-```
-
-配置文件：
-- [.golangci.yml](.golangci.yml) - 代码检查规则
-- [.editorconfig](.editorconfig) - 编辑器配置
+访问 [万界数据](https://www.wanjiedata.com) 注册并获取 API Key。
 
 ## 📄 开源协议
 
@@ -287,5 +213,4 @@ MIT License
 
 - [Anthropic](https://anthropic.com) - Claude AI
 - [万界数据](https://www.wanjiedata.com) - API 代理服务
-- [Charm](https://charm.sh) - Bubble Tea TUI 框架
-- [OpenCode](https://github.com/opencode-ai/opencode) - TUI 设计灵感
+- [nvm](https://github.com/nvm-sh/nvm) - Node Version Manager
