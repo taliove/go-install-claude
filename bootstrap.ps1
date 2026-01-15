@@ -90,4 +90,19 @@ if (-not $downloadSuccess -or [string]::IsNullOrEmpty($scriptContent)) {
 Write-Host "[i] Running installer..." -ForegroundColor Cyan
 Write-Host ""
 
-Invoke-Expression $scriptContent
+# Create a temporary script file to avoid Invoke-Expression parsing issues
+$tempFile = [System.IO.Path]::GetTempFileName() -replace '\.tmp$', '.ps1'
+try {
+    # Write script content with UTF-8 encoding (with BOM for PowerShell compatibility)
+    $utf8WithBom = New-Object System.Text.UTF8Encoding $true
+    [System.IO.File]::WriteAllText($tempFile, $scriptContent, $utf8WithBom)
+    
+    # Execute the temporary script
+    & $tempFile
+}
+finally {
+    # Clean up temporary file
+    if (Test-Path $tempFile) {
+        Remove-Item $tempFile -Force -ErrorAction SilentlyContinue
+    }
+}
